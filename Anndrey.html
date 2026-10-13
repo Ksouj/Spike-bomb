@@ -90,8 +90,8 @@ function tick(){
     }
     
     draw();
-    // Atualiza o tempo no Firebase de forma consistente
-    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
+    // Atualiza o tempo restante diretamente no Firebase a cada segundo
+    if(db) set(ref(db, 'bomba/tempoRestante'), S.left);
 }
 
 if(db) {
@@ -205,14 +205,14 @@ $("m10").onclick=function(){
     if(!S.armed) return;
     S.left=Math.max(1, S.left - 10);
     draw();
-    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
+    if(db) set(ref(db, 'bomba/tempoRestante'), S.left);
 };
 
 $("p10").onclick=function(){
     if(!S.armed) return;
     S.left=Math.min(600, S.left + 10);
     draw();
-    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
+    if(db) set(ref(db, 'bomba/tempoRestante'), S.left);
 };
 </script>
 </body>
