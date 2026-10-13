@@ -70,13 +70,15 @@ function draw(c){
 
 function stop(){
     clearInterval(tm);
+    tm=null;
     S.armed=false;
 }
 
 function tick(){
+    if(!S.armed) return;
     S.left--;
     beep(900,.05);
-    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
+    
     if(S.left<=0){
         S.left=0;
         stop();
@@ -86,22 +88,27 @@ function tick(){
         if(db) set(ref(db, 'bomba/status'), 'DETONADA');
         return;
     }
+    
     draw();
+    // Atualiza o tempo no Firebase de forma consistente
+    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
 }
 
 if(db) {
     onValue(ref(db, 'bomba'), (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
-        if (data.status === 'DESARMADA') {
-            if (S.armed) {
+        
+        if (data.status === 'DESARMADA' || data.status === 'DETONADA') {
+            if (S.armed && data.status === 'DESARMADA') {
                 stop();
                 if(lbl) lbl.textContent="Desarmada";
                 draw("ok");
                 if(st) st.textContent="Bomba desarmada pelo jogador!";
             }
-        } else if (data.status === 'ARMADA' && data.tempoRestante !== undefined) {
-            if (S.armed && data.tempoRestante < S.left) {
+        } else if (data.status === 'ARMADA') {
+            // Sincroniza o tempo caso venha alterado externamente
+            if (data.tempoRestante !== undefined && Math.abs(S.left - data.tempoRestante) > 1) {
                 S.left = data.tempoRestante;
                 draw();
             }
@@ -129,7 +136,7 @@ $("login").onclick = async function() {
     try {
         const snapshot = await get(pinRef);
         
-        let pinReal = "Anndreychupilei"; // Fallback de segurança caso o nó falhe na nuvem
+        let pinReal = "Anndreychupilei"; 
         if (snapshot.exists()) {
             pinReal = snapshot.val();
         }
@@ -144,7 +151,6 @@ $("login").onclick = async function() {
         }
     } catch (error) {
         console.error("Erro ao validar PIN:", error);
-        // Se houver erro de permissão/rede, valida contra a senha padrão de emergência
         if (pinDigitado === "Anndreychupilei") {
             $("gate").style.display="none";
             $("adm").style.display="block";
@@ -174,6 +180,7 @@ $("arm").onclick=function(){
     if(lbl) lbl.textContent="Armada";
     draw();
     if(st) st.textContent="Bomba armada";
+    
     if(db) {
         set(ref(db, 'bomba'), {
             status: 'ARMADA',
@@ -182,7 +189,8 @@ $("arm").onclick=function(){
             tempoRestante: t
         });
     }
-    tm=setInterval(tick,1000);
+    
+    if(!tm) tm=setInterval(tick,1000);
 };
 
 $("dis").onclick=function(){
@@ -196,15 +204,15 @@ $("dis").onclick=function(){
 $("m10").onclick=function(){
     if(!S.armed) return;
     S.left=Math.max(1, S.left - 10);
-    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
     draw();
+    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
 };
 
 $("p10").onclick=function(){
     if(!S.armed) return;
     S.left=Math.min(600, S.left + 10);
-    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
     draw();
+    if(db) update(ref(db, 'bomba'), { tempoRestante: S.left });
 };
 </script>
 </body>
