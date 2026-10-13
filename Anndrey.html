@@ -54,7 +54,12 @@ try {
   console.error("Erro ao iniciar Firebase:", e);
 }
 
-var S = { total: 30, left: 30, armed: false }, tm = null, ac = null;
+var S = { total: 30, left: 30, armed: false, fimEm: 0 }, tm = null, ac = null;
+
+// Relógio do servidor Firebase (evita diferença entre os relógios dos aparelhos)
+var off = 0;
+if (db) onValue(ref(db, '.info/serverTimeOffset'), function(sn) { off = sn.val() || 0; });
+function now() { return Date.now() + off; }
 var $ = function(i) { return document.getElementById(i); };
 var lcd = $("lcd"), hud = $("hud"), st = $("st"), lbl = $("lbl");
 
@@ -74,11 +79,11 @@ function stop() {
 
 function tick() {
     if (!S.armed) return;
-    S.left--;
-    beep(900, .05);
-    
+    var nl = Math.max(0, Math.ceil((S.fimEm - now()) / 1000));
+    if (nl === S.left) return;
+    S.left = nl;
+
     if (S.left <= 0) {
-        S.left = 0;
         stop();
         if (lbl) lbl.textContent = "Detonada";
         draw("hot");
@@ -86,7 +91,8 @@ function tick() {
         if (db) set(ref(db, 'bomba/status'), 'DETONADA');
         return;
     }
-    
+
+    beep(900, .05);
     draw();
     if (db) set(ref(db, 'bomba/tempoRestante'), S.left);
 }
@@ -106,9 +112,9 @@ if (db) {
                     if (st) st.textContent = "Bomba desarmada pelo jogador!";
                 }
             } else if (data.status === 'ARMADA') {
-                if (data.tempoRestante !== undefined && Math.abs(S.left - data.tempoRestante) > 1) {
-                    S.left = data.tempoRestante;
-                    draw();
+                if (S.armed && typeof data.fimEm === 'number' && data.fimEm !== S.fimEm) {
+                    S.fimEm = data.fimEm;
+                    tick();
                 }
             }
         });
@@ -186,6 +192,7 @@ $("arm").onclick = function() {
     }
     stop();
     S.total = S.left = t;
+    S.fimEm = now() + t * 1000;
     S.armed = true;
     if (lbl) lbl.textContent = "Armada";
     draw();
@@ -195,13 +202,14 @@ $("arm").onclick = function() {
         set(ref(db, 'bomba'), {
             status: 'ARMADA',
             armId: Date.now(),
+            fimEm: S.fimEm,
             senha: $("c").value,
             tempoTotal: t,
             tempoRestante: t
         });
     }
     
-    if (!tm) tm = setInterval(tick, 1000);
+    if (!tm) tm = setInterval(tick, 250);
 };
 
 $("dis").onclick = function() {
