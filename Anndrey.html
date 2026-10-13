@@ -1,192 +1,170 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPIKE ADMIN - Login</title>
-    <style>
-        /* Estilos Globais e Fundo */
-        body {
-            background-color: #101620; /* Azul escuro idêntico à imagem */
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
 
-        /* Título Principal (Branco e Vermelho) */
-        .main-title {
-            font-size: 36px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .main-title .white {
-            color: #ffffff;
-        }
-        .main-title .red {
-            color: #ff3b5c; /* Vermelho vibrante */
-        }
-
-        /* Cartão de Login */
-        .login-card {
-            background-color: #161d29; /* Ligeiramente mais claro que o fundo */
-            border: 1px solid #2a3649; /* Borda fina visível */
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-            border-radius: 4px; /* Cantos pouco arredondados */
-            text-align: center;
-            box-sizing: border-box;
-        }
-
-        /* Label do Campo */
-        .field-label {
-            color: #8a9ab0; /* Cinza azulado */
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            display: block;
-            text-align: left;
-        }
-
-        /* Campo de Entrada (PIN) */
-        .pin-input {
-            width: 100%;
-            background-color: #0c1119; /* Fundo escuro do input */
-            border: 1px solid #2a3649;
-            color: #ffffff;
-            padding: 15px;
-            font-size: 16px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            transition: border-color 0.2s;
-        }
-        .pin-input:focus {
-            outline: none;
-            border-color: #ff3b5c; /* Borda vermelha no foco */
-        }
-
-        /* Botão ENTRAR */
-        .btn-entrar {
-            width: 100%;
-            background-color: #ff3b5c; /* Vermelho vibrante */
-            color: #ffffff;
-            border: none;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .btn-entrar:hover {
-            background-color: #e03250;
-        }
-
-        /* Rodapé do Cartão */
-        .card-footer {
-            color: #5c6d84;
-            font-size: 12px;
-            margin-top: 20px;
-        }
-
-        /* Painel de Controlo (Escondido inicialmente) */
-        #painelControlo {
-            display: none;
-        }
-        .btn-control {
-            margin: 10px 0;
-            background-color: #2a3649; /* Cor neutra para controlos */
-        }
-        .btn-detonar {
-            background-color: #ff3b5c; /* Vermelho para detonar */
-        }
-    </style>
+<!--não é para vc mandar para ninguém google-->
+    <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>SPIKE — Administrador</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+<main>
+<h1>Spike <em>Admin</em></h1>
 
-    <!-- Título Principal -->
-    <div class="main-title">
-        <span class="white">SPIKE</span> <span class="red">ADMIN</span>
-    </div>
+<!--rapaz nesse dia eu estava louco kkkkk-->
+<!--nem eu sei o que isso faz direito, só Deus sabe-->
 
-    <!-- SECÇÃO DE LOGIN -->
-    <div class="login-card" id="secaoLogin">
-        <label class="field-label" for="inputAdminPin">PIN DO ADMINISTRADOR</label>
-        <input type="password" id="inputAdminPin" class="pin-input" placeholder="••••">
-        
-        <button class="btn-entrar" onclick="verificarAdminPin()">ENTRAR</button>
+<div class="panel">
+  <div id="gate">
+    <label>PIN do administrador</label>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+    <div class="row"><button class="red" id="login">Entrar</button></div>
+    <small class="n" id="gerr"></small>
+  </div>
+  <div id="adm">
+    <div class="hud" id="hud"><small id="lbl">Desarmada</small><div class="time" id="lcd">00:30</div></div>
+    <div class="status" id="st">Painel do administrador</div>
+    <label>Tempo (segundos, 10 a 600)</label><input id="t" type="number" min="10" max="600" value="30">
+    <label>Código para desarmar (4 dígitos)</label><input id="c" inputmode="numeric" maxlength="4" value="4321">
+    <div class="row"><button class="red" id="arm">Armar</button><button class="cy" id="dis">Desarmar</button></div>
+    <div class="row"><button id="m10">−10 s</button><button id="p10">+10 s</button><button id="out">Sair</button></div>
+  </div>
+  <small class="n">Painel de controle via nuvem Firebase.</small>
+</div>
+</main>
 
-        <div class="card-footer">
-            Painel de controle via nuvem Firebase.
-        </div>
-    </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    <!-- SECÇÃO DE CONTROLOS (OCULTA ATÉ AUTENTICAÇÃO) -->
-    <div class="login-card" id="painelControlo">
-        <div class="field-label">CONTROLOS DA BOMBA</div>
-        <button class="btn-entrar btn-control" onclick="mudarStatus('ARMADA')">ARMAR BOMBA</button>
-        <button class="btn-entrar btn-control" onclick="mudarStatus('DESARMADA')">DESARMAR</button>
-        <button class="btn-entrar btn-detonar" onclick="mudarStatus('DETONADA')">DETONAR AGORA</button>
-    </div>
+const firebaseConfig = {
+  apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
+  authDomain: "spike-3301.firebaseapp.com",
+  databaseURL: "https://spike-3301-default-rtdb.firebaseio.com",
+  projectId: "spike-3301",
+  storageBucket: "spike-3301.firebasestorage.app",
+  messagingSenderId: "309291386168",
+  appId: "1:309291386168:web:074fb3d69aac7517a76dcd",
+  measurementId: "G-FCNQGJ7DRX"
+};
 
-    <!-- Script do Firebase v10 (Modular) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-        // CONFIGURAÇÃO DO TEU FIREBASE (Verifica se o URL está correto)
-        const firebaseConfig = {
-            databaseURL: "https://spike-3301-default-rtdb.firebaseio.com"
-        };
+var PIN="9999",S={total:30,left:30,armed:false},tm=null,ac=null;
+var $=function(i){return document.getElementById(i)};
+var lcd=$("lcd"),hud=$("hud"),st=$("st"),lbl=$("lbl");
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function beep(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 
-        // Função segura para validar o PIN
-        window.verificarAdminPin = async function() {
-            const pinDigitado = document.getElementById("inputAdminPin").value;
-            const pinRef = ref(db, 'pump/config/adminPin'); // Caminho no teu Firebase
+function draw(c){
+    lcd.textContent=fmt(S.left);
+    hud.className="hud "+(c||(S.armed&&S.left<=10?"hot":""));
+}
 
-            try {
-                const snapshot = await get(pinRef);
-                if (snapshot.exists()) {
-                    const pinReal = snapshot.val();
+function stop(){
+    clearInterval(tm);
+    S.armed=false;
+}
 
-                    if (pinDigitado === String(pinReal)) {
-                        document.getElementById("secaoLogin").style.display = "none";
-                        document.getElementById("painelControlo").style.display = "block";
-                    } else {
-                        alert("PIN Incorreto!");
-                        document.getElementById("inputAdminPin").value = "";
-                    }
-                } else {
-                    alert("Erro: PIN não configurado no servidor.");
-                }
-            } catch (error) {
-                console.error("Erro Firebase:", error);
-            }
-        };
+function tick(){
+    S.left--;
+    beep(900,.05);
+    update(ref(db, 'bomba'), { tempoRestante: S.left });
+    if(S.left<=0){
+        S.left=0;
+        stop();
+        lbl.textContent="Detonada";
+        draw("hot");
+        st.textContent="A bomba detonou!";
+        set(ref(db, 'bomba/status'), 'DETONADA');
+        return;
+    }
+    draw();
+}
 
-        // Função para mudar o status
-        window.mudarStatus = async function(novoStatus) {
-            try {
-                await set(ref(db, 'pump/status'), novoStatus);
-                alert("Status atualizado: " + novoStatus);
-            } catch (error) {
-                console.error("Erro Firebase:", error);
-            }
-        };
-    </script>
+onValue(ref(db, 'bomba'), (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    if (data.status === 'DESARMADA') {
+        if (S.armed) {
+            stop();
+            lbl.textContent="Desarmada";
+            draw("ok");
+            st.textContent="Bomba desarmada pelo jogador!";
+        }
+    } else if (data.status === 'ARMADA' && data.tempoRestante !== undefined) {
+        if (S.armed && data.tempoRestante < S.left) {
+            S.left = data.tempoRestante;
+            draw();
+        }
+    }
+});
+
+$("login").onclick=function(){
+    if($("pin").value===PIN){
+        $("gate").style.display="none";
+        $("adm").style.display="block";
+        $("pin").value="";
+        $("gerr").textContent="";
+    }else{
+        $("gerr").textContent="PIN incorreto";
+    }
+};
+
+$("out").onclick=function(){
+    $("adm").style.display="none";
+    $("gate").style.display="block";
+};
+
+$("arm").onclick=function(){
+    var t=parseInt($("t").value,10);
+    t=(t>=10&&t<=600)?t:30;
+    if(!/^\d{4}$/.test($("c").value)){
+        st.textContent="O código precisa ter 4 dígitos";
+        return;
+    }
+    stop();
+    S.total=S.left=t;
+    S.armed=true;
+    lbl.textContent="Armada";
+    draw();
+    st.textContent="Bomba armada";
+    set(ref(db, 'bomba'), {
+        status: 'ARMADA',
+        senha: $("c").value,
+        tempoTotal: t,
+        tempoRestante: t
+    });
+    tm=setInterval(tick,1000);
+};
+
+$("dis").onclick=function(){
+    stop();
+    lbl.textContent="Desarmada";
+    draw("ok");
+    st.textContent="Bomba desarmada pelo Administrador";
+    set(ref(db, 'bomba'), { status: 'DESARMADA' });
+};
+
+$("m10").onclick=function(){
+    if(!S.armed) return;
+    S.left=Math.max(1, S.left - 10);
+    update(ref(db, 'bomba'), { tempoRestante: S.left });
+    draw();
+};
+
+$("p10").onclick=function(){
+    if(!S.armed) return;
+    S.left=Math.min(600, S.left + 10);
+    update(ref(db, 'bomba'), { tempoRestante: S.left });
+    draw();
+};
+</script>
 </body>
 </html>
