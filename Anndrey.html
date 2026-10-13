@@ -27,7 +27,7 @@
     <label>Tempo (segundos, 10 a 600)</label><input id="t" type="number" min="10" max="600" value="30">
     <label>Código para desarmar (4 dígitos)</label><input id="c" inputmode="numeric" maxlength="4" value="4321">
     <div class="row"><button class="red" id="arm">Armar</button><button class="cy" id="dis">Desarmar</button></div>
-    <div class="row"><button id="m10">−10 s</button><button id="p10">+10 s</button><button id="out">Sair</button></div>
+    <div class="row"><button id="out">Sair</button></div>
   </div>
   <small class="n">Painel de controle via nuvem Firebase.</small>
 </div>
@@ -90,7 +90,6 @@ function tick(){
     }
     
     draw();
-    // Atualiza o tempo restante diretamente no Firebase a cada segundo
     if(db) set(ref(db, 'bomba/tempoRestante'), S.left);
 }
 
@@ -107,7 +106,6 @@ if(db) {
                 if(st) st.textContent="Bomba desarmada pelo jogador!";
             }
         } else if (data.status === 'ARMADA') {
-            // Sincroniza o tempo caso venha alterado externamente
             if (data.tempoRestante !== undefined && Math.abs(S.left - data.tempoRestante) > 1) {
                 S.left = data.tempoRestante;
                 draw();
@@ -116,14 +114,12 @@ if(db) {
     });
 }
 
-// Suporte para pressionar Enter no campo de password
 $("pin").addEventListener("keydown", async function(e) {
     if (e.key === "Enter") {
         $("login").click();
     }
 });
 
-// Validação segura do PIN diretamente no Firebase
 $("login").onclick = async function() {
     const pinDigitado = $("pin").value;
     if(!db) {
@@ -199,20 +195,6 @@ $("dis").onclick=function(){
     draw("ok");
     if(st) st.textContent="Bomba desarmada pelo Administrador";
     if(db) set(ref(db, 'bomba'), { status: 'DESARMADA' });
-};
-
-$("m10").onclick=function(){
-    if(!S.armed) return;
-    S.left=Math.max(1, S.left - 10);
-    draw();
-    if(db) set(ref(db, 'bomba/tempoRestante'), S.left);
-};
-
-$("p10").onclick=function(){
-    if(!S.armed) return;
-    S.left=Math.min(600, S.left + 10);
-    draw();
-    if(db) set(ref(db, 'bomba/tempoRestante'), S.left);
 };
 </script>
 </body>
