@@ -1,260 +1,148 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPIKE DESARME</title>
-    <style>
-        /* Estilos Globais e Fundo */
-        body {
-            background-color: #101620; /* Azul escuro idêntico */
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-
-        /* Título Principal (Branco e Vermelho) */
-        .main-title {
-            font-size: 36px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .main-title .white {
-            color: #ffffff;
-        }
-        .main-title .red {
-            color: #ff3b5c;
-        }
-
-        /* Cartão Principal */
-        .desarme-card {
-            background-color: #161d29;
-            border: 1px solid #2a3649;
-            padding: 30px;
-            width: 100%;
-            max-width: 480px;
-            border-radius: 4px;
-            text-align: center;
-            box-sizing: border-box;
-        }
-
-        /* Área do Timer e Status */
-        .timer-box {
-            background-color: #0c1119;
-            border: 1px solid #2a3649;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        .status-text {
-            color: #8a9ab0;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-        }
-        .timer-display {
-            font-size: 64px;
-            font-weight: bold;
-            color: #ffffff; /* Branco como na imagem */
-            font-family: 'Courier New', Courier, monospace; /* Fonte mono para timer */
-        }
-
-        /* Mensagem de Instrução */
-        .instruction-text {
-            color: #ffffff;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-        }
-
-        /* Teclado Numérico (Keypad Grid) */
-        .keypad-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        /* Botões do Keypad */
-        .key-btn {
-            background-color: #0c1119;
-            border: 1px solid #2a3649;
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: bold;
-            padding: 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s, border-color 0.2s;
-        }
-        .key-btn:hover {
-            background-color: #1a2435;
-            border-color: #8a9ab0;
-        }
-        .key-btn:active {
-            background-color: #ff3b5c; /* Feedback vermelho ao clicar */
-            border-color: #ff3b5c;
-        }
-
-        /* Campo de Input Invisível (apenas para guardar o valor) */
-        #codigoAcumulado {
-            display: none;
-        }
-        
-        /* Display do código digitado (opcional, para feedback) */
-        .code-feedback {
-            color: #ff3b5c;
-            font-size: 18px;
-            letter-spacing: 4px;
-            margin-bottom: 10px;
-            height: 22px;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>SPIKE — Desarme</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+<main>
+<h1>Spike <em>Desarme</em></h1>
+<div class="panel">
+  <div class="hud" id="hud"><small id="lbl">Aguardando</small><div class="time" id="lcd">--:--</div><div class="bar"><i id="bar"></i></div></div>
+  <div class="status" id="st">Aguardando o administrador armar a bomba.</div>
+  <div class="pad" id="pad"></div>
+</div>
+</main>
 
-    <!-- Título Principal -->
-    <div class="main-title">
-        <span class="white">SPIKE</span> <span class="red">DESARME</span>
-    </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    <!-- CARTÃO DE DESARME -->
-    <div class="desarme-card">
+const firebaseConfig = {
+  apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
+  authDomain: "spike-3301.firebaseapp.com",
+  databaseURL: "https://spike-3301-default-rtdb.firebaseio.com",
+  projectId: "spike-3301",
+  storageBucket: "spike-3301.firebasestorage.app",
+  messagingSenderId: "309291386168",
+  appId: "1:309291386168:web:074fb3d69aac7517a76dcd",
+  measurementId: "G-FCNQGJ7DRX"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+var S={total:30,left:30,armed:false,entry:""},tm=null,ac=null;
+var $=function(i){return document.getElementById(i)};
+var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
+
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function beep(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+
+function draw(c){
+    lcd.textContent=fmt(S.left);
+    bar.style.width=(S.armed? (S.left/S.total*100)+"%" : "0%");
+    hud.className="hud "+(c||(S.armed&&S.left<=10?"hot":""));
+}
+
+function stop(){clearInterval(tm);S.armed=false}
+
+function tick(){
+ S.left--;
+ beep(S.left<10?1400:900,.06);
+ if(S.left<=0){
+    S.left=0;
+    stop();
+    lbl.textContent="Detonada";
+    draw("hot");
+    st.textContent="A bomba detonou! Sistema Comprometido.";
+    beep(150,.8);
+    set(ref(db, 'bomba/status'), 'DETONADA');
+    return;
+ }
+ draw();
+}
+
+const bombaRef = ref(db, 'bomba');
+onValue(bombaRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    if (data.status === 'ARMADA') {
+        S.total = data.tempoTotal || 30;
         
-        <!-- Timer e Status -->
-        <div class="timer-box">
-            <div class="status-text" id="statusText">AGUARDANDO</div>
-            <div class="timer-display" id="timerDisplay">00:30</div>
-        </div>
-
-        <!-- Instrução -->
-        <div class="instruction-text" id="instructionText">
-            AGUARDANDO O ADMINISTRADOR ARMAR A BOMBA.
-        </div>
-
-        <!-- Feedback do Código (Mostra asteriscos) -->
-        <div class="code-feedback" id="codeFeedback"></div>
-
-        <!-- Teclado Numérico -->
-        <div class="keypad-grid">
-            <button class="key-btn" onclick="teclar('1')">1</button>
-            <button class="key-btn" onclick="teclar('2')">2</button>
-            <button class="key-btn" onclick="teclar('3')">3</button>
-            <button class="key-btn" onclick="teclar('4')">4</button>
-            <button class="key-btn" onclick="teclar('5')">5</button>
-            <button class="key-btn" onclick="teclar('6')">6</button>
-            <button class="key-btn" onclick="teclar('7')">7</button>
-            <button class="key-btn" onclick="teclar('8')">8</button>
-            <button class="key-btn" onclick="teclar('9')">9</button>
-            <button class="key-btn" onclick="apagar()">*</button> <!-- Botão Apagar -->
-            <button class="key-btn" onclick="teclar('0')">0</button>
-            <button class="key-btn" onclick="confirmar()">#</button> <!-- Botão Confirmar -->
-        </div>
-
-        <!-- Input escondido para lógica -->
-        <input type="hidden" id="codigoAcumulado" value="">
-
-    </div>
-
-    <!-- Script do Firebase v10 (Modular) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getDatabase, ref, onValue, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-        // CONFIGURAÇÃO DO TEU FIREBASE
-        const firebaseConfig = {
-            databaseURL: "https://spike-3301-default-rtdb.firebaseio.com"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        const timerDisplay = document.getElementById("timerDisplay");
-        const statusText = document.getElementById("statusText");
-        const instructionText = document.getElementById("instructionText");
-        const codeFeedback = document.getElementById("codeFeedback");
-        const codigoAcumulado = document.getElementById("codigoAcumulado");
-
-        // --- LÓGICA DO KEYPAD ---
-        let inputCode = "";
-
-        window.teclar = function(num) {
-            if (inputCode.length < 8) { // Limite de 8 dígitos
-                inputCode += num;
-                atualizarDisplay();
+        if (!S.armed) {
+            stop();
+            S.left = data.tempoRestante || S.total;
+            S.entry = "";
+            S.armed = true;
+            lbl.textContent = "Bomba armada";
+            st.textContent = "ARMADA! Digite o código e aperte #";
+            draw();
+            tm = setInterval(tick, 1000);
+        } else {
+            if (data.tempoRestante < S.left && (S.left - data.tempoRestante) > 5) {
+                S.left = data.tempoRestante;
+                draw();
             }
         }
-
-        window.apagar = function() {
-            inputCode = ""; // Apaga tudo
-            atualizarDisplay();
+    } else if (data.status === 'DESARMADA' || !data.status) {
+        if (S.armed) {
+            stop();
+            lbl.textContent = "Desarmada";
+            draw("ok");
+            st.textContent="Bomba desarmada!";
+        } else {
+            lbl.textContent = "Aguardando";
+            lcd.textContent = "--:--";
+            st.textContent = "Aguardando o administrador armar a bomba.";
+            draw();
         }
+    }
+});
 
-        function atualizarDisplay() {
-            // Mostra asteriscos para privacidade
-            codeFeedback.innerText = "•".repeat(inputCode.length);
-        }
+// Validação segura do código diretamente no Firebase ao pressionar #
+async function press(k){
+ if(!S.armed) return;
+ if(k==="*"){S.entry="";st.textContent="Entrada limpa"}
+ else if(k==="#"){
+  try {
+      const snapshot = await get(ref(db, 'bomba/senha'));
+      const codigoReal = snapshot.exists() ? snapshot.val() : "4321";
 
-        // --- MONITORIZAÇÃO REALTIME ---
-        onValue(ref(db, 'pump/status'), (snapshot) => {
-            const status = snapshot.val();
-            
-            if (status === "ARMADA") {
-                statusText.innerText = "BOMBA ATIVA";
-                timerDisplay.style.color = "#ff3b5c"; // Vermelho quando ativa
-                instructionText.innerText = "INTRODUZA O CÓDIGO DE DESARME.";
-            } else if (status === "DESARMADA") {
-                statusText.innerText = "DESARMADA";
-                timerDisplay.style.color = "#00cc66"; // Verde
-                instructionText.innerText = "BOMBA DESATIVADA COM SUCESSO.";
-                inputCode = ""; atualizarDisplay();
-            } else if (status === "DETONADA") {
-                statusText.innerText = "DETONADA";
-                timerDisplay.style.color = "#ff0000"; // Vermelho forte
-                instructionText.innerText = "A BOMBA EXPLODIU.";
-                inputCode = ""; atualizarDisplay();
-            } else {
-                statusText.innerText = "AGUARDANDO";
-                timerDisplay.style.color = "#ffffff";
-                timerDisplay.innerText = "00:30";
-                instructionText.innerText = "AGUARDANDO O ADMINISTRADOR ARMAR A BOMBA.";
-            }
-        });
+      if(S.entry === String(codigoReal)){
+         stop();
+         lbl.textContent="Desarmada";
+         draw("ok");
+         st.textContent="Bomba desarmada com sucesso!";
+         beep(1200,.3);
+         set(ref(db, 'bomba/status'), 'DESARMADA');
+      } else {
+         S.left=Math.max(1, S.left - 5);
+         S.entry="";
+         st.textContent="Código errado! -5 segundos";
+         update(ref(db, 'bomba'), { tempoRestante: S.left });
+         draw();
+      }
+  } catch (error) {
+      console.error("Erro ao verificar senha:", error);
+      st.textContent="Erro ao validar código";
+  }
+ } else if(S.entry.length<6){
+    S.entry+=k;
+    st.textContent="Código: "+"■".repeat(S.entry.length);
+ }
+}
 
-        // --- LÓGICA DE CONFIRMAÇÃO (Segura com Firebase) ---
-        window.confirmar = async function() {
-            if (inputCode.length === 0) return;
-
-            const codigoRef = ref(db, 'pump/config/codigoDesarme');
-
-            try {
-                const snapshot = await get(codigoRef);
-                if (snapshot.exists()) {
-                    const codigoReal = snapshot.val();
-
-                    if (inputCode === String(codigoReal)) {
-                        // Desarma a bomba no Firebase
-                        await set(ref(db, 'pump/status'), 'DESARMADA');
-                        alert("CÓDIGO CORRETO!");
-                    } else {
-                        alert("CÓDIGO INCORRETO!");
-                        inputCode = ""; // Limpa o input
-                        atualizarDisplay();
-                    }
-                }
-            } catch (error) {
-                console.error("Erro Firebase:", error);
-            }
-        }
-    </script>
+"123456789*0#".split("").forEach(function(k){
+    var b=document.createElement("button");
+    b.textContent=k;
+    b.onclick=function(){press(k)};
+    $("pad").appendChild(b);
+});
+</script>
 </body>
 </html>
