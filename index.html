@@ -1,140 +1,132 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<title>SPIKE — Desarme</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Desarme de Bomba</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 50px;
+        }
+        #timer {
+            font-size: 80px;
+            color: #ff3333;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+        input, button {
+            padding: 12px;
+            font-size: 18px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        input {
+            width: 80%;
+            text-align: center;
+        }
+        button {
+            background-color: #ff3333;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #cc0000;
+        }
+        #statusDisplay {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #ffcc00;
+        }
+    </style>
 </head>
 <body>
-<main>
-<h1>Spike <em>Desarme</em></h1>
-<div class="panel">
-  <div class="hud" id="hud"><small id="lbl">Aguardando</small><div class="time" id="lcd">--:--</div><div class="bar"><i id="bar"></i></div></div>
-  <div class="status" id="st">Aguardando o administrador armar a bomba.</div>
-  <div class="pad" id="pad"></div>
-</div>
-</main>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <div class="container">
+        <h1>BOMBA ATIVADA</h1>
+        <div id="statusDisplay">A aguardar início...</div>
+        <div id="timer">--:--</div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
-  authDomain: "spike-3301.firebaseapp.com",
-  databaseURL: "https://spike-3301-default-rtdb.firebaseio.com",
-  projectId: "spike-3301",
-  storageBucket: "spike-3301.firebasestorage.app",
-  messagingSenderId: "309291386168",
-  appId: "1:309291386168:web:074fb3d69aac7517a76dcd",
-  measurementId: "G-FCNQGJ7DRX"
-};
+        <div id="desarmeSection">
+            <input type="password" id="inputCodigoDesarme" placeholder="Código de Desarme (ex: 1234)">
+            <br>
+            <button onclick="tentarDesarmarBomba()">DESARMAR BOMBA</button>
+        </div>
+    </div>
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+    <!-- Script do Firebase v10 (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getDatabase, ref, onValue, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-var S={total:30,left:30,armed:false,code:"4321",entry:""},tm=null,ac=null;
-var $=function(i){return document.getElementById(i)};
-var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
+        // CONFIGURAÇÃO DO TEU FIREBASE (Substitui com os teus dados reais se necessário)
+        const firebaseConfig = {
+            databaseURL: "https://spike-3301-default-rtdb.firebaseio.com"
+        };
 
-function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function beep(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-function draw(c){
-    lcd.textContent=fmt(S.left);
-    bar.style.width=(S.armed? (S.left/S.total*100)+"%" : "0%");
-    hud.className="hud "+(c||(S.armed&&S.left<=10?"hot":""));
-}
+        const statusDisplay = document.getElementById("statusDisplay");
+        const timerDisplay = document.getElementById("timer");
 
-function stop(){clearInterval(tm);S.armed=false}
-
-function tick(){
- S.left--;
- beep(S.left<10?1400:900,.06);
- if(S.left<=0){
-    S.left=0;
-    stop();
-    lbl.textContent="Detonada";
-    draw("hot");
-    st.textContent="A bomba detonou! Sistema Comprometido.";
-    beep(150,.8);
-    set(ref(db, 'bomba/status'), 'DETONADA');
-    return;
- }
- draw();
-}
-
-const bombaRef = ref(db, 'bomba');
-onValue(bombaRef, (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    if (data.status === 'ARMADA') {
-        S.code = data.senha || "4321";
-        S.total = data.tempoTotal || 30;
-        
-        if (!S.armed) {
-            stop();
-            S.left = data.tempoRestante || S.total;
-            S.entry = "";
-            S.armed = true;
-            lbl.textContent = "Bomba armada";
-            st.textContent = "ARMADA! Digite o código e aperte #";
-            draw();
-            tm = setInterval(tick, 1000);
-        } else {
-            if (data.tempoRestante < S.left && (S.left - data.tempoRestante) > 5) {
-                S.left = data.tempoRestante;
-                draw();
+        // Monitoriza o status da bomba em tempo real
+        onValue(ref(db, 'pump/status'), (snapshot) => {
+            const status = snapshot.val();
+            
+            if (status === "ARMADA") {
+                statusDisplay.innerText = "ESTADO: ARMADA ⚠️";
+                timerDisplay.style.color = "#ff3333";
+            } else if (status === "DESARMADA") {
+                statusDisplay.innerText = "ESTADO: BOMBA DESARMADA! 🎉";
+                timerDisplay.style.color = "#00cc66";
+                timerDisplay.innerText = "00:00";
+            } else if (status === "DETONADA") {
+                statusDisplay.innerText = "ESTADO: BOOOOOOOM! 💥";
+                timerDisplay.style.color = "#ff0000";
+                timerDisplay.innerText = "00:00";
+            } else {
+                statusDisplay.innerText = "ESTADO: AGUARDANDO...";
             }
-        }
-    } else if (data.status === 'DESARMADA' || !data.status) {
-        if (S.armed) {
-            stop();
-            lbl.textContent = "Desarmada";
-            draw("ok");
-            st.textContent = "Bomba desarmada!";
-        } else {
-            lbl.textContent = "Aguardando";
-            lcd.textContent = "--:--";
-            st.textContent = "Aguardando o administrador armar a bomba.";
-            draw();
-        }
-    }
-});
+        });
 
-function press(k){
- if(!S.armed) return;
- if(k==="*"){S.entry="";st.textContent="Entrada limpa"}
- else if(k==="#"){
-  if(S.entry===S.code){
-     stop();
-     lbl.textContent="Desarmada";
-     draw("ok");
-     st.textContent="Bomba desarmada com sucesso!";
-     beep(1200,.3);
-     set(ref(db, 'bomba/status'), 'DESARMADA');
-  } else {
-     S.left=Math.max(1, S.left - 5);
-     S.entry="";
-     st.textContent="Código errado! -5 segundos";
-     update(ref(db, 'bomba'), { tempoRestante: S.left });
-     draw();
-  }
- } else if(S.entry.length<6){
-    S.entry+=k;
-    st.textContent="Código: "+"■".repeat(S.entry.length);
- }
-}
+        // Função segura para validar o código de desarme direto no Firebase
+        window.tentarDesarmarBomba = async function() {
+            const codigoDigitado = document.getElementById("inputCodigoDesarme").value;
+            const codigoRef = ref(db, 'pump/config/codigoDesarme');
 
-"123456789*0#".split("").forEach(function(k){
-    var b=document.createElement("button");
-    b.textContent=k;
-    b.onclick=function(){press(k)};
-    $("pad").appendChild(b);
-});
-</script>
+            try {
+                const snapshot = await get(codigoRef);
+                if (snapshot.exists()) {
+                    const codigoReal = snapshot.val();
+
+                    if (codigoDigitado === String(codigoReal)) {
+                        set(ref(db, 'pump/status'), 'DESARMADA');
+                        alert("SUCESSO! Bomba desarmada a tempo!");
+                    } else {
+                        alert("Código incorreto! Tenta novamente.");
+                    }
+                } else {
+                    alert("Erro de configuração do código no servidor.");
+                }
+            } catch (error) {
+                console.error("Erro ao verificar código:", error);
+                alert("Erro de ligação ao servidor.");
+            }
+        };
+    </script>
 </body>
 </html>
