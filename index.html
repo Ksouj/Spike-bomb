@@ -7,13 +7,17 @@
 <title>SPIKE — Desarme</title>
 <link rel="stylesheet" href="style.css">
 <style>
+/* Borda igual à do painel admin: fina e discreta (mesmo --bd do style.css) */
+:root{--bd:#2c3b49}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bd:#cfc9be}}
+:root[data-theme="light"]{--bd:#cfc9be}
+.panel,.hud{border:1px solid var(--bd)}
 /* Teclado — teclas planas (estilo do site); só as bolinhas têm relevo */
 #pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:14px auto 0;padding:0}
 #pad button{position:relative;width:100%;height:56px;padding:0;margin:0;
   font:700 1.35rem Arial,sans-serif;letter-spacing:0;text-transform:none;color:var(--tx);
   background:var(--bg);border:1px solid var(--bd);border-radius:0;box-shadow:none;
   -webkit-tap-highlight-color:transparent;user-select:none}
-#pad button:hover{border-color:var(--cy)}
 #pad button:active,#pad button.down{opacity:.7}
 
 /* bolinhas em relevo (braille) em cada número */
