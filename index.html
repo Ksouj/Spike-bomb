@@ -1,25 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<!--não é para vc mandar para ninguém google-->
+<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
 <title>SPIKE — Desarme</title>
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 <main>
 <h1>Spike <em>Desarme</em></h1>
+
 <div class="panel">
-  <div class="hud" id="hud"><small id="lbl">Aguardando</small><div class="time" id="lcd">--:--</div><div class="bar"><i id="bar"></i></div></div>
-  <div class="status" id="st">Aguardando o administrador armar a bomba.</div>
-  <div class="pad" id="pad"></div>
+  <div class="hud" id="hud"><small id="lbl">Aguardando</small><div class="time" id="lcd">00:30</div></div>
+  <div class="status" id="st">Insira o código para desarmar</div>
+  
+  <div class="keypad">
+    <button class="k" data-v="1">1</button>
+    <button class="k" data-v="2">2</button>
+    <button class="k" data-v="3">3</button>
+    <button class="k" data-v="4">4</button>
+    <button class="k" data-v="5">5</button>
+    <button class="k" data-v="6">6</button>
+    <button class="k" data-v="7">7</button>
+    <button class="k" data-v="8">8</button>
+    <button class="k" data-v="9">9</button>
+    <button class="k" data-v="*">*</button>
+    <button class="k" data-v="0">0</button>
+    <button class="k" data-v="#">#</button>
+  </div>
+  
+  <small class="n" id="input-display">Código: </small>
 </div>
 </main>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
@@ -32,117 +51,97 @@ const firebaseConfig = {
   measurementId: "G-FCNQGJ7DRX"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+let db;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+} catch (e) {
+  console.error("Erro ao iniciar Firebase:", e);
+}
 
-var S={total:30,left:30,armed:false,entry:""},tm=null,ac=null;
 var $=function(i){return document.getElementById(i)};
-var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
+var lcd=$("lcd"),hud=$("hud"),st=$("st"),lbl=$("lbl"),inputDisplay=$("input-display");
+
+var codigoDigitado = "";
+var senhaCorreta = "4321";
+var statusAtual = "AGUARDANDO";
+var tempoRestanteLocal = 30;
 
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function beep(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 
 function draw(c){
-    lcd.textContent=fmt(S.left);
-    bar.style.width=(S.armed? (S.left/S.total*100)+"%" : "0%");
-    hud.className="hud "+(c||(S.armed&&S.left<=10?"hot":""));
+    if(lcd) lcd.textContent = fmt(tempoRestanteLocal);
+    if(hud) hud.className = "hud " + (c || (statusAtual === 'ARMADA' && tempoRestanteLocal <= 10 ? "hot" : ""));
 }
 
-function stop(){clearInterval(tm);S.armed=false}
+// Escuta em tempo real todas as alterações vindas do Firebase (incluindo o painel admin)
+if(db) {
+    onValue(ref(db, 'bomba'), (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
 
-function tick(){
- S.left--;
- beep(S.left<10?1400:900,.06);
- if(S.left<=0){
-    S.left=0;
-    stop();
-    lbl.textContent="Detonada";
-    draw("hot");
-    st.textContent="A bomba detonou! Sistema Comprometido.";
-    beep(150,.8);
-    set(ref(db, 'bomba/status'), 'DETONADA');
-    return;
- }
- draw();
-}
-
-const bombaRef = ref(db, 'bomba');
-onValue(bombaRef, (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    if (data.status === 'ARMADA') {
-        S.total = data.tempoTotal || 30;
-        
-        if (!S.armed) {
-            stop();
-            S.left = data.tempoRestante || S.total;
-            S.entry = "";
-            S.armed = true;
-            lbl.textContent = "Bomba armada";
-            st.textContent = "ARMADA! Digite o código e aperte #";
-            draw();
-            tm = setInterval(tick, 1000);
-        } else {
-            if (data.tempoRestante < S.left && (S.left - data.tempoRestante) > 5) {
-                S.left = data.tempoRestante;
-                draw();
-            }
+        statusAtual = data.status || "AGUARDANDO";
+        if (data.senha) senhaCorreta = String(data.senha);
+        if (data.tempoRestante !== undefined) {
+            tempoRestanteLocal = Number(data.tempoRestante);
         }
-    } else if (data.status === 'DESARMADA' || !data.status) {
-        if (S.armed) {
-            stop();
+
+        if (statusAtual === 'ARMADA') {
+            lbl.textContent = "Bomba Armada";
+            st.textContent = "Insira o código de desarme e aperte #";
+            draw();
+        } else if (statusAtual === 'DESARMADA') {
             lbl.textContent = "Desarmada";
+            st.textContent = "Bomba desarmada com sucesso!";
             draw("ok");
-            st.textContent="Bomba desarmada!";
+            codigoDigitado = "";
+            inputDisplay.textContent = "Código: ";
+        } else if (statusAtual === 'DETONADA') {
+            lbl.textContent = "Detonada";
+            st.textContent = "A bomba detonou!";
+            draw("hot");
         } else {
             lbl.textContent = "Aguardando";
-            lcd.textContent = "--:--";
-            st.textContent = "Aguardando o administrador armar a bomba.";
+            st.textContent = "Aguardando o Administrador armar...";
             draw();
         }
-    }
-});
-
-// Validação segura do código diretamente no Firebase ao pressionar #
-async function press(k){
- if(!S.armed) return;
- if(k==="*"){S.entry="";st.textContent="Entrada limpa"}
- else if(k==="#"){
-  try {
-      const snapshot = await get(ref(db, 'bomba/senha'));
-      const codigoReal = snapshot.exists() ? snapshot.val() : "4321";
-
-      if(S.entry === String(codigoReal)){
-         stop();
-         lbl.textContent="Desarmada";
-         draw("ok");
-         st.textContent="Bomba desarmada com sucesso!";
-         beep(1200,.3);
-         set(ref(db, 'bomba/status'), 'DESARMADA');
-      } else {
-         S.left=Math.max(1, S.left - 5);
-         S.entry="";
-         st.textContent="Código errado! -5 segundos";
-         update(ref(db, 'bomba'), { tempoRestante: S.left });
-         draw();
-      }
-  } catch (error) {
-      console.error("Erro ao verificar senha:", error);
-      st.textContent="Erro ao validar código";
-  }
- } else if(S.entry.length<6){
-    S.entry+=k;
-    st.textContent="Código: "+"■".repeat(S.entry.length);
- }
+    });
 }
 
-"123456789*0#".split("").forEach(function(k){
-    var b=document.createElement("button");
-    b.textContent=k;
-    b.onclick=function(){press(k)};
-    $("pad").appendChild(b);
+// Teclado virtual do jogador
+document.querySelectorAll('.k').forEach(button => {
+    button.onclick = function() {
+        if (statusAtual !== 'ARMADA') return;
+        
+        const val = this.getAttribute('data-v');
+
+        if (val === '#') {
+            // Valida o código inserido
+            if (codigoDigitado === senhaCorreta) {
+                st.textContent = "Código Correto! Desarmando...";
+                if(db) {
+                    set(ref(db, 'bomba/status'), 'DESARMADA');
+                }
+            } else {
+                st.textContent = "Código Incorreto!";
+                codigoDigitado = "";
+                inputDisplay.textContent = "Código: ";
+            }
+        } else if (val === '*') {
+            // Limpa o input atual
+            codigoDigitado = "";
+            inputDisplay.textContent = "Código: ";
+        } else {
+            // Adiciona número (limite de 4 dígitos)
+            if (codigoDigitado.length < 4) {
+                codigoDigitado += val;
+                inputDisplay.textContent = "Código: " + "*".repeat(codigoDigitado.length);
+            }
+        }
+    };
 });
+
+draw();
 </script>
 </body>
 </html>
