@@ -196,6 +196,18 @@ if (loginBtn) {
     };
 }
 
+// Troca do código em tempo real: com a bomba armada, cada código válido (4 dígitos) vai direto pro Firebase
+$("c").addEventListener("input", function() {
+    this.value = this.value.replace(/\D/g, "").slice(0, 4);
+    if (!S.armed || !db) return;
+    if (this.value.length === 4) {
+        set(ref(db, 'bomba/senha'), this.value);
+        if (st) st.textContent = "Código atualizado em tempo real";
+    } else if (st) {
+        st.textContent = "Digite os 4 dígitos para trocar o código";
+    }
+});
+
 // Resetar: volta tudo ao modo de início (admin e jogador ficam em "Aguardando")
 $("rst").onclick = function() {
     stop();
