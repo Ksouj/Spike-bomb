@@ -6,6 +6,42 @@
 <meta name="robots" content="noindex, nofollow">
 <title>SPIKE — Desarme</title>
 <link rel="stylesheet" href="style.css">
+<style>
+/* ===== Teclado estilo urna eletrônica + botões tema Valorant ===== */
+#pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:330px;margin:14px auto 0;padding:16px;
+  background:linear-gradient(180deg,#0c121a,#080c12);border:1px solid #2a3644;border-radius:8px;
+  box-shadow:inset 0 2px 10px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.05)}
+#pad button{position:relative;box-sizing:border-box;width:100%;height:56px;padding:0;margin:0;cursor:pointer;
+  font-family:inherit;font-size:22px;font-weight:700;letter-spacing:0;text-transform:none;color:#ECE8E1;
+  background:linear-gradient(180deg,#445164 0%,#232d3b 50%,#161d28 100%);
+  border:1px solid #05080c;border-radius:7px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 3px rgba(0,0,0,.35),0 4px 0 #05080c,0 6px 8px rgba(0,0,0,.45);
+  text-shadow:0 1px 0 rgba(0,0,0,.6);transition:transform .05s,box-shadow .05s,filter .1s;
+  -webkit-tap-highlight-color:transparent;user-select:none}
+#pad button:hover{filter:brightness(1.12)}
+#pad button:active,#pad button.down{transform:translateY(3px);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.6),0 1px 0 #05080c,0 2px 3px rgba(0,0,0,.4);filter:brightness(.92)}
+/* bolinhas em relevo (braille) em cada número */
+#pad .dots{position:absolute;top:7px;left:9px;display:grid;grid-template-rows:repeat(3,5px);grid-auto-flow:column;grid-auto-columns:5px;gap:3px 4px;pointer-events:none}
+#pad .dots i{display:block;width:5px;height:5px;border-radius:50%}
+#pad .dots i.on{background:radial-gradient(circle at 35% 30%,#ffffff 0%,#b9c2cc 45%,#55616f 100%);
+  box-shadow:0 1px 1px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.3)}
+#pad button:active .dots,#pad button.down .dots{transform:translateY(1px)}
+/* risquinho tátil no 5, como na urna */
+#pad button[data-k="5"]::after{content:"";position:absolute;left:50%;bottom:8px;width:16px;height:3px;
+  transform:translateX(-50%);background:rgba(236,232,225,.6);border-radius:2px}
+
+/* Confirmar / Apagar — visual Valorant (cantos cortados, vermelho e creme) */
+#pad button.ok,#pad button.clr{font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;text-shadow:none;
+  border:0;border-bottom:5px solid;border-radius:0;
+  clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
+  box-shadow:none;transition:filter .1s,border-bottom-width .05s,padding-top .05s}
+#pad button.ok{color:#ECE8E1;background:linear-gradient(180deg,#ff5f6d 0%,#FF4655 55%,#e03545 100%);border-bottom-color:#9b1f2c}
+#pad button.clr{color:#0F1923;background:linear-gradient(180deg,#f6f2eb 0%,#ECE8E1 55%,#d6d1c8 100%);border-bottom-color:#8d8981}
+#pad button.ok:hover,#pad button.clr:hover{filter:brightness(1.08)}
+#pad button.ok:active,#pad button.ok.down,#pad button.clr:active,#pad button.clr.down{
+  transform:none;box-shadow:none;border-bottom-width:1px;padding-top:4px;filter:brightness(.9)}
+</style>
 </head>
 <body>
 <main>
@@ -85,7 +121,7 @@ onValue(bombaRef, (snapshot) => {
             draw();
             tm = setInterval(tick, 1000);
         } else {
-            if (data.tempoRestante < S.left && (S.left - data.tempoRestante) > 5) {
+            if (data.tempoRestante !== undefined && Math.abs(data.tempoRestante - S.left) > 2) {
                 S.left = data.tempoRestante;
                 draw();
             }
@@ -138,9 +174,25 @@ async function press(k){
  }
 }
 
+// Pontos braille de cada número (1-3 = coluna esquerda, 4-6 = coluna direita)
+var BRAILLE={"1":[1],"2":[1,2],"3":[1,4],"4":[1,4,5],"5":[1,5],"6":[1,2,4],"7":[1,2,4,5],"8":[1,2,5],"9":[2,4],"0":[2,4,5]};
+
 "123456789*0#".split("").forEach(function(k){
     var b=document.createElement("button");
-    b.textContent=k;
+    b.textContent = k==="#" ? "Confirmar" : (k==="*" ? "Apagar" : k);
+    b.dataset.k = k;
+    if(BRAILLE[k]){
+        var d=document.createElement("span");
+        d.className="dots";
+        for(var n=1;n<=6;n++){
+            var i=document.createElement("i");
+            if(BRAILLE[k].indexOf(n)>-1) i.className="on";
+            d.appendChild(i);
+        }
+        b.appendChild(d);
+    }
+    if(k==="#") b.className="ok";
+    if(k==="*") b.className="clr";
     b.onclick=function(){press(k)};
     $("pad").appendChild(b);
 });
@@ -156,6 +208,8 @@ document.addEventListener("keydown", function(e){
     if (k !== null) {
         e.preventDefault();
         if (document.activeElement) document.activeElement.blur();
+        var el = document.querySelector('#pad button[data-k="' + k + '"]');
+        if (el) { el.classList.add("down"); setTimeout(function(){ el.classList.remove("down"); }, 120); }
         press(k);
     }
 });
