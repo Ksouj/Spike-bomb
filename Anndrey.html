@@ -3,77 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controlo Secreto</title>
+    <title>SPIKE ADMIN - Login</title>
     <style>
+        /* Estilos Globais e Fundo */
         body {
-            background-color: #0b0b0b;
+            background-color: #101620; /* Azul escuro idêntico à imagem */
             color: #ffffff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding-top: 50px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
         }
-        .container {
-            max-width: 450px;
-            margin: 0 auto;
-            background: #1a1a1a;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
-        }
-        input, button {
-            padding: 12px;
-            font-size: 18px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: none;
-            width: 80%;
-        }
-        input {
-            text-align: center;
-            background: #2b2b2b;
-            color: white;
-        }
-        button {
-            background-color: #00adb5;
-            color: white;
-            cursor: pointer;
+
+        /* Título Principal (Branco e Vermelho) */
+        .main-title {
+            font-size: 36px;
             font-weight: bold;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        button:hover {
-            background-color: #007e85;
+        .main-title .white {
+            color: #ffffff;
         }
-        .btn-perigo {
-            background-color: #ff3333;
+        .main-title .red {
+            color: #ff3b5c; /* Vermelho vibrante */
         }
-        .btn-perigo:hover {
-            background-color: #cc0000;
+
+        /* Cartão de Login */
+        .login-card {
+            background-color: #161d29; /* Ligeiramente mais claro que o fundo */
+            border: 1px solid #2a3649; /* Borda fina visível */
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 4px; /* Cantos pouco arredondados */
+            text-align: center;
+            box-sizing: border-box;
         }
+
+        /* Label do Campo */
+        .field-label {
+            color: #8a9ab0; /* Cinza azulado */
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            display: block;
+            text-align: left;
+        }
+
+        /* Campo de Entrada (PIN) */
+        .pin-input {
+            width: 100%;
+            background-color: #0c1119; /* Fundo escuro do input */
+            border: 1px solid #2a3649;
+            color: #ffffff;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .pin-input:focus {
+            outline: none;
+            border-color: #ff3b5c; /* Borda vermelha no foco */
+        }
+
+        /* Botão ENTRAR */
+        .btn-entrar {
+            width: 100%;
+            background-color: #ff3b5c; /* Vermelho vibrante */
+            color: #ffffff;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-entrar:hover {
+            background-color: #e03250;
+        }
+
+        /* Rodapé do Cartão */
+        .card-footer {
+            color: #5c6d84;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        /* Painel de Controlo (Escondido inicialmente) */
         #painelControlo {
-            display: none; /* Fica escondido até colocar o PIN correto */
+            display: none;
+        }
+        .btn-control {
+            margin: 10px 0;
+            background-color: #2a3649; /* Cor neutra para controlos */
+        }
+        .btn-detonar {
+            background-color: #ff3b5c; /* Vermelho para detonar */
         }
     </style>
 </head>
 <body>
 
-    <!-- SECÇÃO DE LOGIN DO ADMIN -->
-    <div class="container" id="secaoLogin">
-        <h2>Painel Restrito</h2>
-        <p>Insere o PIN de administrador:</p>
-        <input type="password" id="inputAdminPin" placeholder="PIN (ex: 9999)">
-        <br>
-        <button onclick="verificarAdminPin()">Entrar</button>
+    <!-- Título Principal -->
+    <div class="main-title">
+        <span class="white">SPIKE</span> <span class="red">ADMIN</span>
+    </div>
+
+    <!-- SECÇÃO DE LOGIN -->
+    <div class="login-card" id="secaoLogin">
+        <label class="field-label" for="inputAdminPin">PIN DO ADMINISTRADOR</label>
+        <input type="password" id="inputAdminPin" class="pin-input" placeholder="••••">
+        
+        <button class="btn-entrar" onclick="verificarAdminPin()">ENTRAR</button>
+
+        <div class="card-footer">
+            Painel de controle via nuvem Firebase.
+        </div>
     </div>
 
     <!-- SECÇÃO DE CONTROLOS (OCULTA ATÉ AUTENTICAÇÃO) -->
-    <div class="container" id="painelControlo">
-        <h2>Controlo da Bomba</h2>
-        <p style="color: #00cc66;">Acesso Autorizado</p>
-        <br>
-        <button onclick="mudarStatus('ARMADA')">ARMAR BOMBA</button>
-        <br>
-        <button onclick="mudarStatus('DESARMADA')">DESARMAR</button>
-        <br>
-        <button class="btn-perigo" onclick="mudarStatus('DETONADA')">DETONAR AGORA (TESTE)</button>
+    <div class="login-card" id="painelControlo">
+        <div class="field-label">CONTROLOS DA BOMBA</div>
+        <button class="btn-entrar btn-control" onclick="mudarStatus('ARMADA')">ARMAR BOMBA</button>
+        <button class="btn-entrar btn-control" onclick="mudarStatus('DESARMADA')">DESARMAR</button>
+        <button class="btn-entrar btn-detonar" onclick="mudarStatus('DETONADA')">DETONAR AGORA</button>
     </div>
 
     <!-- Script do Firebase v10 (Modular) -->
@@ -81,7 +145,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-        // CONFIGURAÇÃO DO TEU FIREBASE
+        // CONFIGURAÇÃO DO TEU FIREBASE (Verifica se o URL está correto)
         const firebaseConfig = {
             databaseURL: "https://spike-3301-default-rtdb.firebaseio.com"
         };
@@ -89,10 +153,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Função para validar o PIN de administrador diretamente no Firebase de forma segura
+        // Função segura para validar o PIN
         window.verificarAdminPin = async function() {
             const pinDigitado = document.getElementById("inputAdminPin").value;
-            const pinRef = ref(db, 'pump/config/adminPin');
+            const pinRef = ref(db, 'pump/config/adminPin'); // Caminho no teu Firebase
 
             try {
                 const snapshot = await get(pinRef);
@@ -100,29 +164,27 @@
                     const pinReal = snapshot.val();
 
                     if (pinDigitado === String(pinReal)) {
-                        // Esconde o login e mostra o painel de controlo verdadeiro
                         document.getElementById("secaoLogin").style.display = "none";
                         document.getElementById("painelControlo").style.display = "block";
                     } else {
                         alert("PIN Incorreto!");
+                        document.getElementById("inputAdminPin").value = "";
                     }
                 } else {
-                    alert("Erro: PIN não configurado no banco de dados.");
+                    alert("Erro: PIN não configurado no servidor.");
                 }
             } catch (error) {
-                console.error("Erro ao validar PIN:", error);
-                alert("Erro ao ligar ao servidor.");
+                console.error("Erro Firebase:", error);
             }
         };
 
-        // Função para alterar o estado da bomba (Armada, Desarmada, Detonada)
+        // Função para mudar o status
         window.mudarStatus = async function(novoStatus) {
             try {
                 await set(ref(db, 'pump/status'), novoStatus);
-                alert("Estado atualizado para: " + novoStatus);
+                alert("Status atualizado: " + novoStatus);
             } catch (error) {
-                console.error("Erro ao atualizar status:", error);
-                alert("Falha ao comunicar com o servidor.");
+                console.error("Erro Firebase:", error);
             }
         };
     </script>
