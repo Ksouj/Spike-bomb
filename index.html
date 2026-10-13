@@ -6,6 +6,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SPIKE — Desarme</title>
 <link rel="stylesheet" href="style.css">
+<style>
+/* Correção forçada para o layout do teclado numérico não desalinhar */
+.keypad {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin: 20px auto 0;
+}
+</style>
 </head>
 
 <body>
@@ -71,7 +82,7 @@ function fmt(s) {
 }
 
 function atualizarDisplay() {
-    lcd.textContent = fmt(tempoRestante);
+    if (lcd) lcd.textContent = fmt(tempoRestante);
 }
 
 // Função centralizada para processar os dígitos (teclado físico ou virtual)
@@ -80,12 +91,12 @@ function processarDigito(val) {
 
     if (val === '#' || val === 'Enter') {
         if (codigoInserido === String(senhaSecreta)) {
-            st.textContent = "Código correto! Bomba desarmada!";
+            if (st) st.textContent = "Código correto! Bomba desarmada!";
             set(ref(db, 'bomba/status'), 'DESARMADA');
         } else {
-            st.textContent = "Código incorreto! Tente novamente.";
+            if (st) st.textContent = "Código incorreto! Tente novamente.";
             codigoInserido = "";
-            codeDisplay.textContent = "Código: ";
+            if (codeDisplay) codeDisplay.textContent = "Código: ";
         }
     } else if (val === '*' || val === 'Backspace') {
         if (val === 'Backspace') {
@@ -93,11 +104,11 @@ function processarDigito(val) {
         } else {
             codigoInserido = "";
         }
-        codeDisplay.textContent = "Código: " + "*".repeat(codigoInserido.length);
+        if (codeDisplay) codeDisplay.textContent = "Código: " + "*".repeat(codigoInserido.length);
     } else if (!isNaN(val) && val !== " ") {
         if (codigoInserido.length < 4) {
             codigoInserido += val;
-            codeDisplay.textContent = "Código: " + "*".repeat(codigoInserido.length);
+            if (codeDisplay) codeDisplay.textContent = "Código: " + "*".repeat(codigoInserido.length);
         }
     }
 }
@@ -107,51 +118,21 @@ onValue(ref(db, 'bomba'), (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
 
-    // Atualiza a senha correta que veio diretamente do painel do admin
     if (data.senha !== undefined) {
         senhaSecreta = String(data.senha);
     }
     
     if (data.status === 'ARMADA') {
         bombaArmada = true;
-        lbl.textContent = "Bomba Armada";
-        hud.className = "hud hot";
-        st.textContent = "INSIRA O CÓDIGO DE DESARME E APERTE #";
+        if (lbl) lbl.textContent = "Bomba Armada";
+        if (hud) hud.className = "hud hot";
+        if (st) st.textContent = "INSIRA O CÓDIGO DE DESARME E APERTE #";
         if (data.tempoRestante !== undefined) {
             tempoRestante = data.tempoRestante;
             atualizarDisplay();
         }
     } else if (data.status === 'DESARMADA') {
         bombaArmada = false;
-        lbl.textContent = "Desarmada";
-        hud.className = "hud ok";
-        st.textContent = "Bomba desarmada com sucesso!";
-        codigoInserido = "";
-        codeDisplay.textContent = "Código: ";
-    } else if (data.status === 'DETONADA') {
-        bombaArmada = false;
-        lbl.textContent = "Detonada";
-        hud.className = "hud hot";
-        st.textContent = "A bomba detonou!";
-    }
-});
-
-// Suporte para cliques nos botões do ecrã
-document.querySelectorAll('.key').forEach(btn => {
-    btn.onclick = function() {
-        processarDigito(this.getAttribute('data-val'));
-    };
-});
-
-// Suporte para digitação direta através do teclado físico do PC
-window.addEventListener('keydown', function(e) {
-    if (!bombaArmada) return;
-    
-    if ((e.key >= '0' && e.key <= '9') || e.key === '#' || e.key === '*' || e.key === 'Enter' || e.key === 'Backspace') {
-        e.preventDefault(); // Evita comportamentos padrão da página
-        processarDigito(e.key);
-    }
-});
-</script>
-</body>
-</html>
+        if (lbl) lbl.textContent = "Desarmada";
+        if (hud) hud.className = "hud ok";
+        if (
