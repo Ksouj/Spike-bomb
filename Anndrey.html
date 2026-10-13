@@ -42,4 +42,175 @@ const firebaseConfig = {
   databaseURL: "https://spike-3301-default-rtdb.firebaseio.com",
   projectId: "spike-3301",
   storageBucket: "spike-3301.firebasestorage.app",
-  messagingSenderId: "309291386
+  messagingSenderId: "309291386168",
+  appId: "1:309291386168:web:074fb3d69aac7517a76dcd",
+  measurementId: "G-FCNQGJ7DRX"
+};
+
+let db = null;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+} catch (e) {
+  console.error("Erro ao iniciar Firebase:", e);
+}
+
+var S = { total: 30, left: 30, armed: false }, tm = null, ac = null;
+var $ = function(i) { return document.getElementById(i); };
+var lcd = $("lcd"), hud = $("hud"), st = $("st"), lbl = $("lbl");
+
+function fmt(s) { return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0"); }
+function beep(f, d) { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); var o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f; g.gain.value = .06; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch(e) {} }
+
+function draw(c) {
+    if (lcd) lcd.textContent = fmt(S.left);
+    if (hud) hud.className = "hud " + (c || (S.armed && S.left <= 10 ? "hot" : ""));
+}
+
+function stop() {
+    clearInterval(tm);
+    tm = null;
+    S.armed = false;
+}
+
+function tick() {
+    if (!S.armed) return;
+    S.left--;
+    beep(900, .05);
+    
+    if (S.left <= 0) {
+        S.left = 0;
+        stop();
+        if (lbl) lbl.textContent = "Detonada";
+        draw("hot");
+        if (st) st.textContent = "A bomba detonou!";
+        if (db) set(ref(db, 'bomba/status'), 'DETONADA');
+        return;
+    }
+    
+    draw();
+    if (db) set(ref(db, 'bomba/tempoRestante'), S.left);
+}
+
+// Inicializa a escuta do Firebase de forma protegida
+if (db) {
+    try {
+        onValue(ref(db, 'bomba'), (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            
+            if (data.status === 'DESARMADA' || data.status === 'DETONADA') {
+                if (S.armed && data.status === 'DESARMADA') {
+                    stop();
+                    if (lbl) lbl.textContent = "Desarmada";
+                    draw("ok");
+                    if (st) st.textContent = "Bomba desarmada pelo jogador!";
+                }
+            } else if (data.status === 'ARMADA') {
+                if (data.tempoRestante !== undefined && Math.abs(S.left - data.tempoRestante) > 1) {
+                    S.left = data.tempoRestante;
+                    draw();
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Erro no onValue:", err);
+    }
+}
+
+// Ações de Login totalmente blindadas
+const pinInput = $("pin");
+const loginBtn = $("login");
+
+if (pinInput) {
+    pinInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            loginBtn.click();
+        }
+    });
+}
+
+if (loginBtn) {
+    loginBtn.onclick = async function() {
+        const pinDigitado = pinInput.value.trim();
+        
+        // Validação principal e imediata com a tua senha de administrador
+        if (pinDigitado === "Anndreychupilei") {
+            $("gate").style.display = "none";
+            $("adm").style.display = "block";
+            pinInput.value = "";
+            $("gerr").textContent = "";
+            return;
+        }
+
+        // Se falhar a senha direta, tenta validar no Firebase se estiver disponível
+        if (!db) {
+            $("gerr").textContent = "PIN incorreto";
+            return;
+        }
+
+        try {
+            const pinRef = ref(db, 'bomba/config/adminPin');
+            const snapshot = await get(pinRef);
+            
+            let pinReal = "Anndreychupilei"; 
+            if (snapshot.exists()) {
+                pinReal = String(snapshot.val()).trim();
+            }
+
+            if (pinDigitado === pinReal) {
+                $("gate").style.display = "none";
+                $("adm").style.display = "block";
+                pinInput.value = "";
+                $("gerr").textContent = "";
+            } else {
+                $("gerr").textContent = "PIN incorreto";
+            }
+        } catch (error) {
+            console.error("Erro ao validar PIN no Firebase:", error);
+            $("gerr").textContent = "PIN incorreto";
+        }
+    };
+}
+
+$("out").onclick = function() {
+    $("adm").style.display = "none";
+    $("gate").style.display = "block";
+};
+
+$("arm").onclick = function() {
+    var t = parseInt($("t").value, 10);
+    t = (t >= 10 && t <= 600) ? t : 30;
+    if (!/^\d{4}$/.test($("c").value)) {
+        if (st) st.textContent = "O código precisa ter 4 dígitos";
+        return;
+    }
+    stop();
+    S.total = S.left = t;
+    S.armed = true;
+    if (lbl) lbl.textContent = "Armada";
+    draw();
+    if (st) st.textContent = "Bomba armada";
+    
+    if (db) {
+        set(ref(db, 'bomba'), {
+            status: 'ARMADA',
+            senha: $("c").value,
+            tempoTotal: t,
+            tempoRestante: t
+        });
+    }
+    
+    if (!tm) tm = setInterval(tick, 1000);
+};
+
+$("dis").onclick = function() {
+    stop();
+    if (lbl) lbl.textContent = "Desarmada";
+    draw("ok");
+    if (st) st.textContent = "Bomba desarmada pelo Administrador";
+    if (db) set(ref(db, 'bomba'), { status: 'DESARMADA' });
+};
+</script>
+</body>
+</html>
