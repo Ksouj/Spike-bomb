@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<!--não é para vc mandar para ninguém google-->
 <meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -15,30 +14,32 @@
 
 <div class="panel">
   <div class="hud" id="hud"><small id="lbl">Aguardando</small><div class="time" id="lcd">00:30</div></div>
-  <div class="status" id="st">Insira o código para desarmar</div>
+  <div class="status" id="st">Aguardando o administrador armar a bomba...</div>
   
-  <div class="keypad">
-    <button class="k" data-v="1">1</button>
-    <button class="k" data-v="2">2</button>
-    <button class="k" data-v="3">3</button>
-    <button class="k" data-v="4">4</button>
-    <button class="k" data-v="5">5</button>
-    <button class="k" data-v="6">6</button>
-    <button class="k" data-v="7">7</button>
-    <button class="k" data-v="8">8</button>
-    <button class="k" data-v="9">9</button>
-    <button class="k" data-v="*">*</button>
-    <button class="k" data-v="0">0</button>
-    <button class="k" data-v="#">#</button>
+  <div class="pad-container">
+    <div class="code-display" id="codeDisplay">Código: </div>
+    <div class="keypad">
+      <button class="key" data-val="1">1</button>
+      <button class="key" data-val="2">2</button>
+      <button class="key" data-val="3">3</button>
+      <button class="key" data-val="4">4</button>
+      <button class="key" data-val="5">5</button>
+      <button class="key" data-val="6">6</button>
+      <button class="key" data-val="7">7</button>
+      <button class="key" data-val="8">8</button>
+      <button class="key" data-val="9">9</button>
+      <button class="key" data-val="*">*</button>
+      <button class="key" data-val="0">0</button>
+      <button class="key" data-val="#">#</button>
+    </div>
   </div>
-  
-  <small class="n" id="input-display">Código: </small>
+  <small class="n">Sistema de desarme em tempo real.</small>
 </div>
 </main>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
@@ -51,97 +52,89 @@ const firebaseConfig = {
   measurementId: "G-FCNQGJ7DRX"
 };
 
-let db;
-try {
-  const app = initializeApp(firebaseConfig);
-  db = getDatabase(app);
-} catch (e) {
-  console.error("Erro ao iniciar Firebase:", e);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+var codigoInserido = "";
+var senhaSecreta = "4321";
+var bombaArmada = false;
+var tempoRestante = 30;
+
+var lcd = document.getElementById("lcd");
+var hud = document.getElementById("hud");
+var st = document.getElementById("st");
+var lbl = document.getElementById("lbl");
+var codeDisplay = document.getElementById("codeDisplay");
+
+function fmt(s) {
+    return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
 }
 
-var $=function(i){return document.getElementById(i)};
-var lcd=$("lcd"),hud=$("hud"),st=$("st"),lbl=$("lbl"),inputDisplay=$("input-display");
-
-var codigoDigitado = "";
-var senhaCorreta = "4321";
-var statusAtual = "AGUARDANDO";
-var tempoRestanteLocal = 30;
-
-function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-
-function draw(c){
-    if(lcd) lcd.textContent = fmt(tempoRestanteLocal);
-    if(hud) hud.className = "hud " + (c || (statusAtual === 'ARMADA' && tempoRestanteLocal <= 10 ? "hot" : ""));
+function atualizarDisplay() {
+    lcd.textContent = fmt(tempoRestante);
 }
 
-// Escuta em tempo real todas as alterações vindas do Firebase (incluindo o painel admin)
-if(db) {
-    onValue(ref(db, 'bomba'), (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
+// Escuta as alterações na nuvem em tempo real
+onValue(ref(db, 'bomba'), (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
 
-        statusAtual = data.status || "AGUARDANDO";
-        if (data.senha) senhaCorreta = String(data.senha);
+    senhaSecreta = data.senha || "4321";
+    
+    if (data.status === 'ARMADA') {
+        bombaArmada = true;
+        lbl.textContent = "Bomba Armada";
+        hud.className = "hud hot";
+        st.textContent = "INSIRA O CÓDIGO DE DESARME E APERTE #";
         if (data.tempoRestante !== undefined) {
-            tempoRestanteLocal = Number(data.tempoRestante);
+            tempoRestante = data.tempoRestante;
+            atualizarDisplay();
         }
+    } else if (data.status === 'DESARMADA') {
+        bombaArmada = false;
+        lbl.textContent = "Desarmada";
+        hud.className = "hud ok";
+        st.textContent = "Bomba desarmada com sucesso!";
+        codigoInserido = "";
+        codeDisplay.textContent = "Código: ";
+    } else if (data.status === 'DETONADA') {
+        bombaArmada = false;
+        lbl.textContent = "Detonada";
+        hud.className = "hud hot";
+        st.textContent = "A bomba detonou!";
+    }
+});
 
-        if (statusAtual === 'ARMADA') {
-            lbl.textContent = "Bomba Armada";
-            st.textContent = "Insira o código de desarme e aperte #";
-            draw();
-        } else if (statusAtual === 'DESARMADA') {
-            lbl.textContent = "Desarmada";
-            st.textContent = "Bomba desarmada com sucesso!";
-            draw("ok");
-            codigoDigitado = "";
-            inputDisplay.textContent = "Código: ";
-        } else if (statusAtual === 'DETONADA') {
-            lbl.textContent = "Detonada";
-            st.textContent = "A bomba detonou!";
-            draw("hot");
-        } else {
-            lbl.textContent = "Aguardando";
-            st.textContent = "Aguardando o Administrador armar...";
-            draw();
-        }
-    });
-}
-
-// Teclado virtual do jogador
-document.querySelectorAll('.k').forEach(button => {
-    button.onclick = function() {
-        if (statusAtual !== 'ARMADA') return;
+// Lógica dos botões do teclado numérico
+document.querySelectorAll('.key').forEach(btn => {
+    btn.onclick = function() {
+        if (!bombaArmada) return;
         
-        const val = this.getAttribute('data-v');
-
+        const val = this.getAttribute('data-val');
+        
         if (val === '#') {
             // Valida o código inserido
-            if (codigoDigitado === senhaCorreta) {
-                st.textContent = "Código Correto! Desarmando...";
-                if(db) {
-                    set(ref(db, 'bomba/status'), 'DESARMADA');
-                }
+            if (codigoInserido === String(senhaSecreta)) {
+                st.textContent = "Código correto! Bomba desarmada!";
+                set(ref(db, 'bomba/status'), 'DESARMADA');
             } else {
-                st.textContent = "Código Incorreto!";
-                codigoDigitado = "";
-                inputDisplay.textContent = "Código: ";
+                st.textContent = "Código incorreto! Tente novamente.";
+                codigoInserido = "";
+                codeDisplay.textContent = "Código: ";
             }
         } else if (val === '*') {
-            // Limpa o input atual
-            codigoDigitado = "";
-            inputDisplay.textContent = "Código: ";
+            // Limpa o código digitado
+            codigoInserido = "";
+            codeDisplay.textContent = "Código: ";
         } else {
             // Adiciona número (limite de 4 dígitos)
-            if (codigoDigitado.length < 4) {
-                codigoDigitado += val;
-                inputDisplay.textContent = "Código: " + "*".repeat(codigoDigitado.length);
+            if (codigoInserido.length < 4) {
+                codigoInserido += val;
+                codeDisplay.textContent = "Código: " + "*".repeat(codigoInserido.length);
             }
         }
     };
 });
-
-draw();
 </script>
 </body>
 </html>
