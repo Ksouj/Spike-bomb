@@ -143,6 +143,21 @@ async function press(k){
     b.onclick=function(){press(k)};
     $("pad").appendChild(b);
 });
+
+// Teclado físico: números, * e # (Enter confirma; Esc/Backspace/Delete limpam)
+document.addEventListener("keydown", function(e){
+    var k = null;
+    if (/^[0-9]$/.test(e.key)) k = e.key;
+    else if (e.key === "*") k = "*";
+    else if (e.key === "#" || e.key === "Enter") k = "#";
+    else if (e.key === "Escape" || e.key === "Backspace" || e.key === "Delete") k = "*";
+
+    if (k !== null) {
+        e.preventDefault();
+        if (document.activeElement) document.activeElement.blur();
+        press(k);
+    }
+});
 </script>
 </body>
 </html>
