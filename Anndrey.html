@@ -3,10 +3,9 @@
 <head>
 
 <!--não é para vc mandar para ninguém google-->
-    <meta name="robots" content="noindex, nofollow">
+<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
 <title>SPIKE — Administrador</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -14,9 +13,6 @@
 <body>
 <main>
 <h1>Spike <em>Admin</em></h1>
-
-<!--rapaz nesse dia eu estava louco kkkkk-->
-<!--nem eu sei o que isso faz direito, só Deus sabe-->
 
 <div class="panel">
   <div id="gate">
@@ -106,20 +102,27 @@ onValue(ref(db, 'bomba'), (snapshot) => {
     }
 });
 
-// Verificação do PIN diretamente no Firebase (Seguro contra Inspecionar Elemento)
+// Suporte para pressionar Enter no campo de password
 $("pin").addEventListener("keydown", async function(e) {
     if (e.key === "Enter") {
         $("login").click();
     }
 });
 
+// Validação segura do PIN diretamente no Firebase (caminho com 'config' em minúsculo)
 $("login").onclick = async function() {
     const pinDigitado = $("pin").value;
     const pinRef = ref(db, 'bomba/config/adminPin');
 
     try {
         const snapshot = await get(pinRef);
-        const pinReal = snapshot.exists() ? snapshot.val() : "9999"; // Fallback se não existir
+        
+        if (!snapshot.exists()) {
+            $("gerr").textContent = "Erro: adminPin não encontrado no Firebase";
+            return;
+        }
+
+        const pinReal = snapshot.val();
 
         if (pinDigitado === String(pinReal)) {
             $("gate").style.display="none";
