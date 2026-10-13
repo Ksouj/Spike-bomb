@@ -63,7 +63,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-var S={total:30,left:30,armed:false,entry:"",armId:null},tm=null,ac=null;
+var S={total:30,left:30,armed:false,entry:"",armId:null,fimEm:0},tm=null,ac=null;
+
+// Relógio do servidor Firebase (evita diferença entre os relógios dos aparelhos)
+var off=0;
+onValue(ref(db,'.info/serverTimeOffset'),function(sn){off=sn.val()||0});
+function now(){return Date.now()+off}
 var $=function(i){return document.getElementById(i)};
 var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
 
@@ -79,10 +84,11 @@ function draw(c){
 function stop(){clearInterval(tm);S.armed=false}
 
 function tick(){
- S.left--;
- beep(S.left<10?1400:900,.06);
+ if(!S.armed) return;
+ var nl=Math.max(0,Math.ceil((S.fimEm-now())/1000));
+ if(nl===S.left) return;
+ S.left=nl;
  if(S.left<=0){
-    S.left=0;
     stop();
     lbl.textContent="Detonada";
     draw("hot");
@@ -91,6 +97,7 @@ function tick(){
     set(ref(db, 'bomba/status'), 'DETONADA');
     return;
  }
+ beep(S.left<10?1400:900,.06);
  draw();
 }
 
@@ -105,18 +112,17 @@ onValue(bombaRef, (snapshot) => {
         if (!S.armed || data.armId !== S.armId) {
             stop();
             S.armId = data.armId;
-            S.left = data.tempoRestante || S.total;
+            S.fimEm = (typeof data.fimEm === 'number') ? data.fimEm : now() + (data.tempoRestante || S.total) * 1000;
+            S.left = Math.max(0, Math.ceil((S.fimEm - now()) / 1000));
             S.entry = "";
             S.armed = true;
             lbl.textContent = "Bomba armada";
-            st.textContent = "ARMADA! Digite o código e aperte #";
+            st.textContent = "ARMADA! Digite o código e aperte Confirmar";
             draw();
-            tm = setInterval(tick, 1000);
-        } else {
-            if (data.tempoRestante !== undefined && Math.abs(data.tempoRestante - S.left) > 2) {
-                S.left = data.tempoRestante;
-                draw();
-            }
+            tm = setInterval(tick, 250);
+        } else if (typeof data.fimEm === 'number' && data.fimEm !== S.fimEm) {
+            S.fimEm = data.fimEm;
+            tick();
         }
     } else if (data.status === 'DESARMADA' || !data.status) {
         if (S.armed) {
@@ -150,10 +156,11 @@ async function press(k){
          beep(1200,.3);
          set(ref(db, 'bomba/status'), 'DESARMADA');
       } else {
-         S.left=Math.max(1, S.left - 5);
+         S.fimEm=Math.min(S.fimEm, Math.max(now()+1000, S.fimEm-5000));
+         S.left=Math.max(0,Math.ceil((S.fimEm-now())/1000));
          S.entry="";
          st.textContent="Código errado! -5 segundos";
-         update(ref(db, 'bomba'), { tempoRestante: S.left });
+         update(ref(db, 'bomba'), { fimEm: S.fimEm, tempoRestante: S.left });
          draw();
       }
   } catch (error) {
