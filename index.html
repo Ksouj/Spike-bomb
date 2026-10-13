@@ -35,7 +35,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-var S={total:30,left:30,armed:false,entry:""},tm=null,ac=null;
+var S={total:30,left:30,armed:false,entry:"",armId:null},tm=null,ac=null;
 var $=function(i){return document.getElementById(i)};
 var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
 
@@ -74,8 +74,9 @@ onValue(bombaRef, (snapshot) => {
     if (data.status === 'ARMADA') {
         S.total = data.tempoTotal || 30;
         
-        if (!S.armed) {
+        if (!S.armed || data.armId !== S.armId) {
             stop();
+            S.armId = data.armId;
             S.left = data.tempoRestante || S.total;
             S.entry = "";
             S.armed = true;
