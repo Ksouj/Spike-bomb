@@ -26,7 +26,7 @@
     <label>Tempo (segundos, 10 a 600)</label><input id="t" type="number" min="10" max="600" value="30">
     <label>Código para desarmar (4 dígitos)</label><input id="c" inputmode="numeric" maxlength="4" value="4321">
     <div class="row"><button class="red" id="arm">Armar</button><button class="cy" id="dis">Desarmar</button></div>
-    <div class="row"><button id="out">Sair</button></div>
+    <div class="row"><button id="rst">Resetar</button><button id="out">Sair</button></div>
   </div>
   <small class="n">Painel de controle via nuvem Firebase.</small>
 </div>
@@ -104,15 +104,33 @@ if (db) {
             const data = snapshot.val();
             if (!data) return;
             
-            if (data.status === 'DESARMADA' || data.status === 'DETONADA') {
-                if (S.armed && data.status === 'DESARMADA') {
+            if (data.status === 'DESARMADA') {
+                if (S.armed) {
                     stop();
                     if (lbl) lbl.textContent = "Desarmada";
                     draw("ok");
                     if (st) st.textContent = "Bomba desarmada pelo jogador!";
                 }
+            } else if (data.status === 'DETONADA') {
+                stop();
+                S.left = 0;
+                if (lbl) lbl.textContent = "Detonada";
+                draw("hot");
+                if (st) st.textContent = "A bomba detonou!";
             } else if (data.status === 'ARMADA') {
-                if (S.armed && typeof data.fimEm === 'number' && data.fimEm !== S.fimEm) {
+                if (!S.armed) {
+                    // Página recarregada com a bomba já armada: retoma de onde está
+                    S.total = data.tempoTotal || 30;
+                    S.fimEm = (typeof data.fimEm === 'number') ? data.fimEm : now() + (data.tempoRestante || S.total) * 1000;
+                    S.left = -1;
+                    S.armed = true;
+                    $("t").value = S.total;
+                    if (data.senha) $("c").value = data.senha;
+                    if (lbl) lbl.textContent = "Armada";
+                    if (st) st.textContent = "Bomba armada";
+                    if (!tm) tm = setInterval(tick, 250);
+                    tick();
+                } else if (typeof data.fimEm === 'number' && data.fimEm !== S.fimEm) {
                     S.fimEm = data.fimEm;
                     tick();
                 }
@@ -177,6 +195,18 @@ if (loginBtn) {
         }
     };
 }
+
+// Resetar: volta tudo ao modo de início (admin e jogador ficam em "Aguardando")
+$("rst").onclick = function() {
+    stop();
+    S.total = S.left = 30;
+    $("t").value = 30;
+    $("c").value = "4321";
+    if (lbl) lbl.textContent = "Desarmada";
+    draw();
+    if (st) st.textContent = "Painel do administrador";
+    if (db) set(ref(db, 'bomba'), { status: 'DESARMADA', reset: true });
+};
 
 $("out").onclick = function() {
     $("adm").style.display = "none";
