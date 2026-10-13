@@ -194,6 +194,7 @@ $("arm").onclick = function() {
     if (db) {
         set(ref(db, 'bomba'), {
             status: 'ARMADA',
+            armId: Date.now(),
             senha: $("c").value,
             tempoTotal: t,
             tempoRestante: t
