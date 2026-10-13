@@ -3,68 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Desarme de Bomba</title>
+    <title>SPIKE DESARME</title>
     <style>
+        /* Estilos Globais e Fundo */
         body {
-            background-color: #121212;
+            background-color: #101620; /* Azul escuro idêntico */
             color: #ffffff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding-top: 50px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
         }
-        #timer {
-            font-size: 80px;
-            color: #ff3333;
-            margin: 20px 0;
+
+        /* Título Principal (Branco e Vermelho) */
+        .main-title {
+            font-size: 36px;
             font-weight: bold;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background: #1e1e1e;
+        .main-title .white {
+            color: #ffffff;
+        }
+        .main-title .red {
+            color: #ff3b5c;
+        }
+
+        /* Cartão Principal */
+        .desarme-card {
+            background-color: #161d29;
+            border: 1px solid #2a3649;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
-        }
-        input, button {
-            padding: 12px;
-            font-size: 18px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: none;
-        }
-        input {
-            width: 80%;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 4px;
             text-align: center;
+            box-sizing: border-box;
         }
-        button {
-            background-color: #ff3333;
-            color: white;
-            cursor: pointer;
+
+        /* Área do Timer e Status */
+        .timer-box {
+            background-color: #0c1119;
+            border: 1px solid #2a3649;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .status-text {
+            color: #8a9ab0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+        .timer-display {
+            font-size: 64px;
             font-weight: bold;
+            color: #ffffff; /* Branco como na imagem */
+            font-family: 'Courier New', Courier, monospace; /* Fonte mono para timer */
         }
-        button:hover {
-            background-color: #cc0000;
+
+        /* Mensagem de Instrução */
+        .instruction-text {
+            color: #ffffff;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
         }
-        #statusDisplay {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #ffcc00;
+
+        /* Teclado Numérico (Keypad Grid) */
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* Botões do Keypad */
+        .key-btn {
+            background-color: #0c1119;
+            border: 1px solid #2a3649;
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .key-btn:hover {
+            background-color: #1a2435;
+            border-color: #8a9ab0;
+        }
+        .key-btn:active {
+            background-color: #ff3b5c; /* Feedback vermelho ao clicar */
+            border-color: #ff3b5c;
+        }
+
+        /* Campo de Input Invisível (apenas para guardar o valor) */
+        #codigoAcumulado {
+            display: none;
+        }
+        
+        /* Display do código digitado (opcional, para feedback) */
+        .code-feedback {
+            color: #ff3b5c;
+            font-size: 18px;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            height: 22px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>BOMBA ATIVADA</h1>
-        <div id="statusDisplay">A aguardar início...</div>
-        <div id="timer">--:--</div>
+    <!-- Título Principal -->
+    <div class="main-title">
+        <span class="white">SPIKE</span> <span class="red">DESARME</span>
+    </div>
 
-        <div id="desarmeSection">
-            <input type="password" id="inputCodigoDesarme" placeholder="Código de Desarme (ex: 1234)">
-            <br>
-            <button onclick="tentarDesarmarBomba()">DESARMAR BOMBA</button>
+    <!-- CARTÃO DE DESARME -->
+    <div class="desarme-card">
+        
+        <!-- Timer e Status -->
+        <div class="timer-box">
+            <div class="status-text" id="statusText">AGUARDANDO</div>
+            <div class="timer-display" id="timerDisplay">00:30</div>
         </div>
+
+        <!-- Instrução -->
+        <div class="instruction-text" id="instructionText">
+            AGUARDANDO O ADMINISTRADOR ARMAR A BOMBA.
+        </div>
+
+        <!-- Feedback do Código (Mostra asteriscos) -->
+        <div class="code-feedback" id="codeFeedback"></div>
+
+        <!-- Teclado Numérico -->
+        <div class="keypad-grid">
+            <button class="key-btn" onclick="teclar('1')">1</button>
+            <button class="key-btn" onclick="teclar('2')">2</button>
+            <button class="key-btn" onclick="teclar('3')">3</button>
+            <button class="key-btn" onclick="teclar('4')">4</button>
+            <button class="key-btn" onclick="teclar('5')">5</button>
+            <button class="key-btn" onclick="teclar('6')">6</button>
+            <button class="key-btn" onclick="teclar('7')">7</button>
+            <button class="key-btn" onclick="teclar('8')">8</button>
+            <button class="key-btn" onclick="teclar('9')">9</button>
+            <button class="key-btn" onclick="apagar()">*</button> <!-- Botão Apagar -->
+            <button class="key-btn" onclick="teclar('0')">0</button>
+            <button class="key-btn" onclick="confirmar()">#</button> <!-- Botão Confirmar -->
+        </div>
+
+        <!-- Input escondido para lógica -->
+        <input type="hidden" id="codigoAcumulado" value="">
+
     </div>
 
     <!-- Script do Firebase v10 (Modular) -->
@@ -72,7 +170,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getDatabase, ref, onValue, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-        // CONFIGURAÇÃO DO TEU FIREBASE (Substitui com os teus dados reais se necessário)
+        // CONFIGURAÇÃO DO TEU FIREBASE
         const firebaseConfig = {
             databaseURL: "https://spike-3301-default-rtdb.firebaseio.com"
         };
@@ -80,53 +178,60 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        const statusDisplay = document.getElementById("statusDisplay");
-        const timerDisplay = document.getElementById("timer");
+        const timerDisplay = document.getElementById("timerDisplay");
+        const statusText = document.getElementById("statusText");
+        const instructionText = document.getElementById("instructionText");
+        const codeFeedback = document.getElementById("codeFeedback");
+        const codigoAcumulado = document.getElementById("codigoAcumulado");
 
-        // Monitoriza o status da bomba em tempo real
+        // --- LÓGICA DO KEYPAD ---
+        let inputCode = "";
+
+        window.teclar = function(num) {
+            if (inputCode.length < 8) { // Limite de 8 dígitos
+                inputCode += num;
+                atualizarDisplay();
+            }
+        }
+
+        window.apagar = function() {
+            inputCode = ""; // Apaga tudo
+            atualizarDisplay();
+        }
+
+        function atualizarDisplay() {
+            // Mostra asteriscos para privacidade
+            codeFeedback.innerText = "•".repeat(inputCode.length);
+        }
+
+        // --- MONITORIZAÇÃO REALTIME ---
         onValue(ref(db, 'pump/status'), (snapshot) => {
             const status = snapshot.val();
             
             if (status === "ARMADA") {
-                statusDisplay.innerText = "ESTADO: ARMADA ⚠️";
-                timerDisplay.style.color = "#ff3333";
+                statusText.innerText = "BOMBA ATIVA";
+                timerDisplay.style.color = "#ff3b5c"; // Vermelho quando ativa
+                instructionText.innerText = "INTRODUZA O CÓDIGO DE DESARME.";
             } else if (status === "DESARMADA") {
-                statusDisplay.innerText = "ESTADO: BOMBA DESARMADA! 🎉";
-                timerDisplay.style.color = "#00cc66";
-                timerDisplay.innerText = "00:00";
+                statusText.innerText = "DESARMADA";
+                timerDisplay.style.color = "#00cc66"; // Verde
+                instructionText.innerText = "BOMBA DESATIVADA COM SUCESSO.";
+                inputCode = ""; atualizarDisplay();
             } else if (status === "DETONADA") {
-                statusDisplay.innerText = "ESTADO: BOOOOOOOM! 💥";
-                timerDisplay.style.color = "#ff0000";
-                timerDisplay.innerText = "00:00";
+                statusText.innerText = "DETONADA";
+                timerDisplay.style.color = "#ff0000"; // Vermelho forte
+                instructionText.innerText = "A BOMBA EXPLODIU.";
+                inputCode = ""; atualizarDisplay();
             } else {
-                statusDisplay.innerText = "ESTADO: AGUARDANDO...";
+                statusText.innerText = "AGUARDANDO";
+                timerDisplay.style.color = "#ffffff";
+                timerDisplay.innerText = "00:30";
+                instructionText.innerText = "AGUARDANDO O ADMINISTRADOR ARMAR A BOMBA.";
             }
         });
 
-        // Função segura para validar o código de desarme direto no Firebase
-        window.tentarDesarmarBomba = async function() {
-            const codigoDigitado = document.getElementById("inputCodigoDesarme").value;
-            const codigoRef = ref(db, 'pump/config/codigoDesarme');
+        // --- LÓGICA DE CONFIRMAÇÃO (Segura com Firebase) ---
+        window.confirmar = async function() {
+            if (inputCode.length === 0) return;
 
-            try {
-                const snapshot = await get(codigoRef);
-                if (snapshot.exists()) {
-                    const codigoReal = snapshot.val();
-
-                    if (codigoDigitado === String(codigoReal)) {
-                        set(ref(db, 'pump/status'), 'DESARMADA');
-                        alert("SUCESSO! Bomba desarmada a tempo!");
-                    } else {
-                        alert("Código incorreto! Tenta novamente.");
-                    }
-                } else {
-                    alert("Erro de configuração do código no servidor.");
-                }
-            } catch (error) {
-                console.error("Erro ao verificar código:", error);
-                alert("Erro de ligação ao servidor.");
-            }
-        };
-    </script>
-</body>
-</html>
+            const
