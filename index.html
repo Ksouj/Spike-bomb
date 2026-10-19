@@ -146,6 +146,23 @@ onValue(bombaRef, (snapshot) => {
     }
 });
 
+// Som de urna eletrônica (beep longo de "FIM"), sintetizado via Web Audio
+function urna(){
+ try{
+  ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+  if(ac.state==="suspended") ac.resume();
+  var t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.type="square";
+  o.frequency.value=1000;
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(.12,t+.01);
+  g.gain.setValueAtTime(.12,t+1.4);
+  g.gain.linearRampToValueAtTime(0,t+1.5);
+  o.connect(g);g.connect(ac.destination);
+  o.start(t);o.stop(t+1.5);
+ }catch(e){}
+}
+
 // Validação segura do código diretamente no Firebase ao pressionar #
 async function press(k){
  if(!S.armed) return;
@@ -161,7 +178,7 @@ async function press(k){
          lbl.textContent="Desarmada";
          draw("ok");
          st.textContent="Bomba desarmada com sucesso!";
-         beep(1200,.3);
+         urna();
          set(ref(db, 'bomba/status'), 'DESARMADA');
       } else {
          S.fimEm=Math.min(S.fimEm, Math.max(now()+1000, S.fimEm-5000));
