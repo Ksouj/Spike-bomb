@@ -146,26 +146,51 @@ onValue(bombaRef, (snapshot) => {
     }
 });
 
-// Som de urna eletrônica (beep longo de "FIM"), sintetizado via Web Audio
+// Sons da urna eletrônica (medidos no áudio original e sintetizados via Web Audio)
+function audio(){
+ ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+ if(ac.state==="suspended") ac.resume();
+}
+
+// Clique de tecla: ~25 ms de seno em 2307 Hz
+function clique(){
+ try{
+  audio();
+  var t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.type="sine";
+  o.frequency.value=2307;
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(.33,t+.002);
+  g.gain.setValueAtTime(.33,t+.021);
+  g.gain.linearRampToValueAtTime(0,t+.025);
+  o.connect(g);g.connect(ac.destination);
+  o.start(t);o.stop(t+.03);
+ }catch(e){}
+}
+
+// Bip da confirmação: alterna 2204 Hz / 2307 Hz a cada ~100 ms (~0,71 s no total)
 function urna(){
  try{
-  ac=ac||new (window.AudioContext||window.webkitAudioContext)();
-  if(ac.state==="suspended") ac.resume();
-  var t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
-  o.type="square";
-  o.frequency.value=1000;
-  g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(.12,t+.01);
-  g.gain.setValueAtTime(.12,t+1.4);
-  g.gain.linearRampToValueAtTime(0,t+1.5);
+  audio();
+  var t=ac.currentTime,at=t,o=ac.createOscillator(),g=ac.createGain();
+  var seq=[[2307,.03,.27],[2204,.097,.38],[2307,.097,.27],[2204,.097,.38],[2307,.097,.27],[2204,.097,.38],[2307,.097,.27],[2204,.097,.38]];
+  o.type="sine";
+  seq.forEach(function(s){
+    o.frequency.setValueAtTime(s[0],at);
+    g.gain.setValueAtTime(s[2],at);
+    at+=s[1];
+  });
+  g.gain.setValueAtTime(.38,at-.004);
+  g.gain.linearRampToValueAtTime(0,at);
   o.connect(g);g.connect(ac.destination);
-  o.start(t);o.stop(t+1.5);
+  o.start(t);o.stop(at+.01);
  }catch(e){}
 }
 
 // Validação segura do código diretamente no Firebase ao pressionar #
 async function press(k){
  if(!S.armed) return;
+ if(k!=="#") clique();
  if(k==="*"){S.entry="";st.textContent="Entrada limpa"}
  else if(k==="#"){
   try {
