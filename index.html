@@ -73,7 +73,7 @@ var $=function(i){return document.getElementById(i)};
 var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
 
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function beep(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+function beep(f,d){try{if(!ac||ac.state!=="running")return;var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 
 function draw(c){
     lcd.textContent=fmt(S.left);
@@ -151,6 +151,12 @@ function audio(){
  ac=ac||new (window.AudioContext||window.webkitAudioContext)();
  if(ac.state==="suspended") ac.resume();
 }
+
+// Libera o áudio no primeiro toque/tecla. Antes disso o navegador deixa o áudio suspenso,
+// e os bips do contador não tocam (evita acumular bips e soltar tudo junto no primeiro clique).
+["pointerdown","keydown"].forEach(function(ev){
+ document.addEventListener(ev,function(){try{audio()}catch(e){}},{passive:true});
+});
 
 // Clique de tecla: ~25 ms de seno em 2307 Hz
 function clique(){
