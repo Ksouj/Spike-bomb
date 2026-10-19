@@ -54,7 +54,7 @@ try {
   console.error("Erro ao iniciar Firebase:", e);
 }
 
-var S = { total: 30, left: 30, armed: false, fimEm: 0 }, tm = null, ac = null;
+var S = { total: 30, left: 30, armed: false, fimEm: 0 }, tm = null;
 
 // Relógio do servidor Firebase (evita diferença entre os relógios dos aparelhos)
 var off = 0;
@@ -64,8 +64,6 @@ var $ = function(i) { return document.getElementById(i); };
 var lcd = $("lcd"), hud = $("hud"), st = $("st"), lbl = $("lbl");
 
 function fmt(s) { return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0"); }
-function beep(f, d) { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); var o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f; g.gain.value = .06; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch(e) {} }
-
 function draw(c) {
     if (lcd) lcd.textContent = fmt(S.left);
     if (hud) hud.className = "hud " + (c || (S.armed && S.left <= 10 ? "hot" : ""));
@@ -92,7 +90,6 @@ function tick() {
         return;
     }
 
-    beep(900, .05);
     draw();
     if (db) set(ref(db, 'bomba/tempoRestante'), S.left);
 }
