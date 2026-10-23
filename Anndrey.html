@@ -5,14 +5,14 @@
 <meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SPIKE — Administrador</title>
+<title>C4 — Plantar</title>
 <link rel="stylesheet" href="style.css">
 </head>
-
+ 
 <body>
 <main>
-<h1>Spike <em>Admin</em></h1>
-
+<h1>C4 <em>Plantar</em></h1>
+ 
 <div class="panel">
   <div id="gate">
     <label>PIN do administrador</label>
@@ -25,13 +25,13 @@
     <div class="status" id="st">Painel do administrador</div>
     <label>Tempo (segundos, 10 a 600)</label><input id="t" type="number" min="10" max="600" value="30">
     <label>Código para desarmar (4 dígitos)</label><input id="c" inputmode="numeric" maxlength="4" value="4321">
-    <div class="row"><button class="red" id="arm">Armar</button><button class="cy" id="dis">Desarmar</button></div>
+    <div class="row"><button class="red" id="arm">Plantar</button><button class="cy" id="dis">Desarmar</button></div>
     <div class="row"><button id="rst">Resetar</button><button id="out">Sair</button></div>
   </div>
   <small class="n">Painel de controle via nuvem Firebase.</small>
 </div>
 </main>
-
+ 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -45,7 +45,7 @@ const firebaseConfig = {
   appId: "1:309291386168:web:074fb3d69aac7517a76dcd",
   measurementId: "G-FCNQGJ7DRX"
 };
-
+ 
 let db = null;
 try {
   const app = initializeApp(firebaseConfig);
@@ -53,34 +53,34 @@ try {
 } catch (e) {
   console.error("Erro ao iniciar Firebase:", e);
 }
-
+ 
 var S = { total: 30, left: 30, armed: false, fimEm: 0 }, tm = null;
-
+ 
 // Relógio do servidor Firebase (evita diferença entre os relógios dos aparelhos)
 var off = 0;
 if (db) onValue(ref(db, '.info/serverTimeOffset'), function(sn) { off = sn.val() || 0; });
 function now() { return Date.now() + off; }
 var $ = function(i) { return document.getElementById(i); };
 var lcd = $("lcd"), hud = $("hud"), st = $("st"), lbl = $("lbl");
-
+ 
 function fmt(s) { return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0"); }
 function draw(c) {
     if (lcd) lcd.textContent = fmt(S.left);
     if (hud) hud.className = "hud " + (c || (S.armed && S.left <= 10 ? "hot" : ""));
 }
-
+ 
 function stop() {
     clearInterval(tm);
     tm = null;
     S.armed = false;
 }
-
+ 
 function tick() {
     if (!S.armed) return;
     var nl = Math.max(0, Math.ceil((S.fimEm - now()) / 1000));
     if (nl === S.left) return;
     S.left = nl;
-
+ 
     if (S.left <= 0) {
         stop();
         if (lbl) lbl.textContent = "Detonada";
@@ -89,11 +89,11 @@ function tick() {
         if (db) set(ref(db, 'bomba/status'), 'DETONADA');
         return;
     }
-
+ 
     draw();
     if (db) set(ref(db, 'bomba/tempoRestante'), S.left);
 }
-
+ 
 // Inicializa a escuta do Firebase de forma protegida
 if (db) {
     try {
@@ -137,11 +137,11 @@ if (db) {
         console.error("Erro no onValue:", err);
     }
 }
-
+ 
 // Ações de Login totalmente blindadas
 const pinInput = $("pin");
 const loginBtn = $("login");
-
+ 
 if (pinInput) {
     pinInput.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
@@ -149,7 +149,7 @@ if (pinInput) {
         }
     });
 }
-
+ 
 if (loginBtn) {
     loginBtn.onclick = async function() {
         const pinDigitado = pinInput.value.trim();
@@ -162,13 +162,13 @@ if (loginBtn) {
             $("gerr").textContent = "";
             return;
         }
-
+ 
         // Se falhar a senha direta, tenta validar no Firebase se estiver disponível
         if (!db) {
             $("gerr").textContent = "PIN incorreto";
             return;
         }
-
+ 
         try {
             const pinRef = ref(db, 'bomba/config/adminPin');
             const snapshot = await get(pinRef);
@@ -177,7 +177,7 @@ if (loginBtn) {
             if (snapshot.exists()) {
                 pinReal = String(snapshot.val()).trim();
             }
-
+ 
             if (pinDigitado === pinReal) {
                 $("gate").style.display = "none";
                 $("adm").style.display = "block";
@@ -192,7 +192,7 @@ if (loginBtn) {
         }
     };
 }
-
+ 
 // Troca do código em tempo real: com a bomba armada, cada código válido (4 dígitos) vai direto pro Firebase
 $("c").addEventListener("input", function() {
     this.value = this.value.replace(/\D/g, "").slice(0, 4);
@@ -204,7 +204,7 @@ $("c").addEventListener("input", function() {
         st.textContent = "Digite os 4 dígitos para trocar o código";
     }
 });
-
+ 
 // Resetar: volta tudo ao modo de início (admin e jogador ficam em "Aguardando")
 $("rst").onclick = function() {
     stop();
@@ -216,12 +216,12 @@ $("rst").onclick = function() {
     if (st) st.textContent = "Painel do administrador";
     if (db) set(ref(db, 'bomba'), { status: 'DESARMADA', reset: true });
 };
-
+ 
 $("out").onclick = function() {
     $("adm").style.display = "none";
     $("gate").style.display = "block";
 };
-
+ 
 $("arm").onclick = function() {
     var t = parseInt($("t").value, 10);
     t = (t >= 10 && t <= 600) ? t : 30;
@@ -250,7 +250,7 @@ $("arm").onclick = function() {
     
     if (!tm) tm = setInterval(tick, 250);
 };
-
+ 
 $("dis").onclick = function() {
     stop();
     if (lbl) lbl.textContent = "Desarmada";
