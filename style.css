@@ -1,41 +1,23 @@
 /* ==========================================
-   1. VARIÁVEIS DE TEMA E CONFIGURAÇÕES
+   1. VARIÁVEIS DE TEMA (C4 - CS:GO)
    ========================================== */
 :root {
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Tema Escuro (Padrão) */
-  --bg: #0f1923;
-  --pan: #1a2733;
-  --tx: #ece8e1;
-  --mut: #8b97a3;
-  --red: #ff4655;
-  --cy: #3dd6c6;
-  --bd: #2c3b49;
+  --bg: #14160f;      /* fundo: quase preto esverdeado */
+  --pan: #3a4030;     /* carcaça verde-oliva da C4 */
+  --pan2: #2c3123;    /* oliva escuro (sombras/detalhes) */
+  --tx: #d9d3b8;     /* texto cor de areia */
+  --mut: #9a9a80;     /* texto secundário */
+  --red: #ff1a1a;     /* LED vermelho */
+  --cy: #4cff6a;      /* LED verde (desarmada) */
+  --yl: #e8b923;      /* amarelo de alerta */
+  --bd: #1c1f15;      /* bordas escuras */
+  --led-bg: #060606;  /* fundo do display */
 }
 
-/* Tema Claro (Detecção Automática ou Manual) */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #ece8e1;
-    --pan: #fff;
-    --tx: #0f1923;
-    --mut: #566573;
-    --bd: #cfc9be;
-  }
-}
-
-:root[data-theme="light"] {
-  --bg: #ece8e1;
-  --pan: #fff;
-  --tx: #0f1923;
-  --mut: #566573;
-  --bd: #cfc9be;
-}
-
-/* Reset Global */
 * {
   box-sizing: border-box;
 }
@@ -45,7 +27,9 @@
    ========================================== */
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 6px),
+    radial-gradient(ellipse at center, #1f2217 0%, var(--bg) 70%);
   color: var(--tx);
   font: 16px/1.5 "Arial Narrow", Arial, system-ui, sans-serif;
   min-height: 100vh;
@@ -64,20 +48,53 @@ main {
 h1 {
   font: 900 2.6rem/1 Impact, "Arial Narrow", sans-serif;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
   margin: 0.3em 0 0.6em;
   text-align: center;
+  color: var(--yl);
+  text-shadow: 2px 2px 0 #000;
 }
 
 h1 em {
   color: var(--red);
   font-style: normal;
+  text-shadow: 0 0 14px rgba(255, 26, 26, 0.6), 2px 2px 0 #000;
 }
 
+/* Carcaça da C4: oliva, faixa de alerta no topo e "parafusos" nos cantos */
 .panel {
-  background: var(--pan);
-  border: 1px solid var(--bd);
-  padding: 16px;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.15)),
+    var(--pan);
+  border: 3px solid var(--bd);
+  border-radius: 4px;
+  padding: 26px 16px 16px;
   width: 100%;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,0.05),
+    0 10px 30px rgba(0,0,0,0.7);
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 10px;
+  background: repeating-linear-gradient(
+    -45deg, var(--yl) 0 12px, #111 12px 24px
+  );
+  border-bottom: 2px solid var(--bd);
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  bottom: 6px; left: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #777, #222);
+  box-shadow: calc(100% + 0px) 0 0 transparent;
 }
 
 /* ==========================================
@@ -85,10 +102,14 @@ h1 em {
    ========================================== */
 .hud {
   text-align: center;
-  padding: 12px 4px;
-  background: #0b1219;
-  border: 1px solid var(--bd);
-  color: #ece8e1;
+  padding: 14px 6px;
+  background: var(--led-bg);
+  border: 3px solid #000;
+  border-radius: 2px;
+  color: var(--tx);
+  box-shadow:
+    inset 0 0 18px rgba(0,0,0,0.9),
+    0 0 0 2px var(--pan2);
 }
 
 .hud small {
@@ -99,24 +120,32 @@ h1 em {
 }
 
 .time {
-  font: 900 3.4rem/1.05 Impact, "Arial Narrow", sans-serif;
-  letter-spacing: 0.06em;
+  font: 400 3.6rem/1.05 "Share Tech Mono", "Courier New", monospace;
+  letter-spacing: 0.1em;
+  color: var(--red);
+  text-shadow: 0 0 6px rgba(255, 26, 26, 0.9), 0 0 22px rgba(255, 26, 26, 0.5);
 }
 
 .hud.hot .time {
-  color: var(--red);
-  text-shadow: 0 0 18px rgba(255, 70, 85, 0.6);
+  color: #ff3030;
+  text-shadow: 0 0 8px #ff1a1a, 0 0 28px rgba(255, 26, 26, 0.8);
+  animation: blink 0.5s steps(2, start) infinite;
 }
 
 .hud.ok .time {
   color: var(--cy);
-  text-shadow: 0 0 18px rgba(61, 214, 198, 0.5);
+  text-shadow: 0 0 8px rgba(76, 255, 106, 0.9), 0 0 24px rgba(76, 255, 106, 0.5);
+}
+
+@keyframes blink {
+  50% { opacity: 0.55; }
 }
 
 .bar {
-  height: 6px;
-  background: var(--bd);
-  margin-top: 8px;
+  height: 8px;
+  background: #000;
+  border: 1px solid var(--pan2);
+  margin-top: 10px;
 }
 
 .bar i {
@@ -124,17 +153,19 @@ h1 em {
   height: 100%;
   width: 0;
   background: var(--red);
+  box-shadow: 0 0 8px var(--red);
   transition: width 1.1s linear;
 }
 
 .status {
   min-height: 1.6em;
-  margin: 0.7em 0 0.3em;
+  margin: 0.8em 0 0.3em;
   font-weight: 700;
   text-align: center;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   font-size: 0.82rem;
+  color: var(--yl);
 }
 
 /* ==========================================
@@ -143,16 +174,20 @@ h1 em {
 button {
   font: 700 0.9rem Arial, sans-serif;
   padding: 13px 0;
-  border: 1px solid var(--bd);
-  background: var(--bg);
+  border: 2px solid #000;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #2a2a2a, #111);
   color: var(--tx);
   cursor: pointer;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 #000;
 }
 
 button:active {
-  opacity: 0.7;
+  opacity: 0.85;
+  transform: translateY(2px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .row {
@@ -165,17 +200,18 @@ button:active {
   flex: 1;
 }
 
-/* Cores de Destaque para Botões */
+/* Botões de destaque */
 .red {
-  background: var(--red) !important;
+  background: linear-gradient(180deg, #ff3b3b, #b30000) !important;
   color: #fff;
-  border: 0;
+  border: 2px solid #000;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
 }
 
 .cy {
-  background: var(--cy) !important;
-  color: #0f1923;
-  border: 0;
+  background: linear-gradient(180deg, #ffd24a, #b8860b) !important;
+  color: #111;
+  border: 2px solid #000;
 }
 
 label {
@@ -183,17 +219,24 @@ label {
   font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--mut);
+  color: var(--yl);
   margin: 12px 0 4px;
 }
 
 input {
   width: 100%;
   padding: 11px;
-  border: 1px solid var(--bd);
-  background: #0b1219;
-  color: #ece8e1;
-  font: inherit;
+  border: 2px solid #000;
+  background: var(--led-bg);
+  color: var(--red);
+  font: 1.1rem "Share Tech Mono", "Courier New", monospace;
+  letter-spacing: 0.1em;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--yl);
 }
 
 small.n {
@@ -212,12 +255,19 @@ small.n {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   max-width: 270px;
-  margin: 8px auto;
+  margin: 10px auto;
+  padding: 10px;
+  background: var(--pan2);
+  border: 2px solid #000;
+  border-radius: 4px;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
 }
 
 .pad button {
-  font: 700 1.05rem Arial, sans-serif;
+  font: 700 1.2rem "Share Tech Mono", Arial, sans-serif;
   padding: 13px 0;
+  background: linear-gradient(180deg, #333, #141414);
+  color: var(--tx);
 }
 
 #adm {
