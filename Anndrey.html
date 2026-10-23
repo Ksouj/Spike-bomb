@@ -24,7 +24,7 @@
     <div class="hud" id="hud"><small id="lbl">Desarmada</small><div class="time" id="lcd">00:30</div></div>
     <div class="status" id="st">Painel do administrador</div>
     <label>Tempo (segundos, 10 a 600)</label><input id="t" type="number" min="10" max="600" value="30">
-    <label>Código para desarmar (4 dígitos)</label><input id="c" inputmode="numeric" maxlength="4" value="1969">
+    <label>Código para desarmar (4 dígitos)</label><input id="c" inputmode="numeric" maxlength="4" value="4321">
     <div class="row"><button class="red" id="arm">Plantar</button><button class="cy" id="dis">Desarmar</button></div>
     <div class="row"><button id="rst">Resetar</button><button id="out">Sair</button></div>
   </div>
@@ -34,7 +34,7 @@
  
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
   authDomain: "spike-3301.firebaseapp.com",
@@ -238,14 +238,17 @@ $("arm").onclick = function() {
     if (st) st.textContent = "Bomba armada";
     
     if (db) {
+        // O fim da contagem é calculado com a hora do SERVIDOR (não com o relógio deste aparelho)
         set(ref(db, 'bomba'), {
             status: 'ARMADA',
             armId: Date.now(),
-            fimEm: S.fimEm,
+            armadoEm: serverTimestamp(),
             senha: $("c").value,
             tempoTotal: t,
             tempoRestante: t
-        });
+        }).then(function() { return get(ref(db, 'bomba/armadoEm')); })
+          .then(function(sn) { return update(ref(db, 'bomba'), { fimEm: sn.val() + t * 1000 }); })
+          .catch(function(e) { console.error("Erro ao armar:", e); });
     }
     
     if (!tm) tm = setInterval(tick, 250);
