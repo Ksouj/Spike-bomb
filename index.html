@@ -5,50 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
-<title>C4 — Desarme</title>
+<title>C4 — Desarmar</title>
 <link rel="stylesheet" href="style.css">
-<style>
-/* Borda igual à do painel admin: fina e discreta (mesmo --bd do style.css) */
-:root{--bd:#2c3b49}
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bd:#cfc9be}}
-:root[data-theme="light"]{--bd:#cfc9be}
-.panel,.hud{border:1px solid var(--bd)!important}
-#pad button:not(.ok):not(.clr){border:1px solid var(--bd)!important}
-/* Teclado — teclas planas (estilo do site); só as bolinhas têm relevo */
-#pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:14px auto 0;padding:0}
-#pad button{position:relative;width:100%;height:56px;padding:0;margin:0;
-  font:700 1.35rem Arial,sans-serif;letter-spacing:0;text-transform:none;color:var(--tx);
-  background:var(--bg);border:1px solid var(--bd);border-radius:0;box-shadow:none;
-  -webkit-tap-highlight-color:transparent;user-select:none}
-#pad button:active,#pad button.down{opacity:.7}
-
-/* bolinhas em relevo (braille) em cada número */
-#pad .dots{position:absolute;top:7px;left:9px;display:grid;grid-template-rows:repeat(3,5px);grid-auto-flow:column;grid-auto-columns:5px;gap:3px 4px;pointer-events:none}
-#pad .dots i{display:block;width:5px;height:5px;border-radius:50%}
-#pad .dots i.on{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.95) 0%,var(--tx) 55%);
-  box-shadow:0 1px 1px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.2)}
-
-/* Apagar (vermelho) e Confirmar (ciano) — mesmas cores do Armar / Desarmar */
-#pad button.ok,#pad button.clr{font:800 .8rem Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;border:0}
-#pad button.clr{color:#fff;background:var(--red)}
-#pad button.ok{color:#0f1923;background:var(--cy)}
-#pad button.ok:hover,#pad button.clr:hover{filter:brightness(1.1)}
-</style>
 </head>
 <body>
 <main>
-<h1>C4<em>Desarme</em></h1>
+<h1>C4 <em>Desarmar</em></h1>
 <div class="panel">
   <div class="hud" id="hud"><small id="lbl">Aguardando</small><div class="time" id="lcd">--:--</div><div class="bar"><i id="bar"></i></div></div>
   <div class="status" id="st">Aguardando o administrador armar a bomba.</div>
   <div class="pad" id="pad"></div>
 </div>
 </main>
-
+ 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
+ 
 const firebaseConfig = {
   apiKey: "AIzaSyDwHJLKes6j9ZNnaObER_tnrwuFe-Jk-k4",
   authDomain: "spike-3301.firebaseapp.com",
@@ -59,30 +32,30 @@ const firebaseConfig = {
   appId: "1:309291386168:web:074fb3d69aac7517a76dcd",
   measurementId: "G-FCNQGJ7DRX"
 };
-
+ 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
+ 
 var S={total:30,left:30,armed:false,entry:"",armId:null,fimEm:0,fin:false},tm=null,ac=null;
-
+ 
 // Relógio do servidor Firebase (evita diferença entre os relógios dos aparelhos)
 var off=0;
 onValue(ref(db,'.info/serverTimeOffset'),function(sn){off=sn.val()||0});
 function now(){return Date.now()+off}
 var $=function(i){return document.getElementById(i)};
 var lcd=$("lcd"),hud=$("hud"),bar=$("bar"),st=$("st"),lbl=$("lbl");
-
+ 
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
 function beep(f,d){try{if(!ac||ac.state!=="running")return;var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
-
+ 
 function draw(c){
     lcd.textContent=fmt(S.left);
     bar.style.width=(S.armed? (S.left/S.total*100)+"%" : "0%");
     hud.className="hud "+(c||(S.armed&&S.left<=10?"hot":""));
 }
-
+ 
 function stop(){clearInterval(tm);S.armed=false}
-
+ 
 function tick(){
  if(!S.armed) return;
  var nl=Math.max(0,Math.ceil((S.fimEm-now())/1000));
@@ -101,12 +74,12 @@ function tick(){
  beep(S.left<10?1400:900,.06);
  draw();
 }
-
+ 
 const bombaRef = ref(db, 'bomba');
 onValue(bombaRef, (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
-
+ 
     if (data.status === 'ARMADA') {
         S.total = data.tempoTotal || 30;
         
@@ -145,19 +118,19 @@ onValue(bombaRef, (snapshot) => {
         }
     }
 });
-
-// Sons da urna eletrônica (medidos no áudio original e sintetizados via Web Audio)
+ 
+// Áudio (Web Audio)
 function audio(){
  ac=ac||new (window.AudioContext||window.webkitAudioContext)();
  if(ac.state==="suspended") ac.resume();
 }
-
+ 
 // Libera o áudio no primeiro toque/tecla. Antes disso o navegador deixa o áudio suspenso,
 // e os bips do contador não tocam (evita acumular bips e soltar tudo junto no primeiro clique).
 ["pointerdown","keydown"].forEach(function(ev){
  document.addEventListener(ev,function(){try{audio()}catch(e){}},{passive:true});
 });
-
+ 
 // Clique de tecla: ~25 ms de seno em 2307 Hz
 function clique(){
  try{
@@ -173,26 +146,7 @@ function clique(){
   o.start(t);o.stop(t+.03);
  }catch(e){}
 }
-
-// Bip da confirmação: alterna 2204 Hz / 2307 Hz a cada ~100 ms (~0,71 s no total)
-function urna(){
- try{
-  audio();
-  var t=ac.currentTime,at=t,o=ac.createOscillator(),g=ac.createGain();
-  var seq=[[2307,.03,.27],[2204,.097,.38],[2307,.097,.27],[2204,.097,.38],[2307,.097,.27],[2204,.097,.38],[2307,.097,.27],[2204,.097,.38]];
-  o.type="sine";
-  seq.forEach(function(s){
-    o.frequency.setValueAtTime(s[0],at);
-    g.gain.setValueAtTime(s[2],at);
-    at+=s[1];
-  });
-  g.gain.setValueAtTime(.38,at-.004);
-  g.gain.linearRampToValueAtTime(0,at);
-  o.connect(g);g.connect(ac.destination);
-  o.start(t);o.stop(at+.01);
- }catch(e){}
-}
-
+ 
 // Validação segura do código diretamente no Firebase ao pressionar #
 async function press(k){
  if(!S.armed) return;
@@ -202,14 +156,13 @@ async function press(k){
   try {
       const snapshot = await get(ref(db, 'bomba/senha'));
       const codigoReal = snapshot.exists() ? snapshot.val() : "4321";
-
+ 
       if(S.entry === String(codigoReal)){
          stop();
          S.fin=true;
          lbl.textContent="Desarmada";
          draw("ok");
          st.textContent="Bomba desarmada com sucesso!";
-         urna();
          set(ref(db, 'bomba/status'), 'DESARMADA');
       } else {
          S.fimEm=Math.min(S.fimEm, Math.max(now()+1000, S.fimEm-5000));
@@ -228,30 +181,18 @@ async function press(k){
     st.textContent="Código: "+"■".repeat(S.entry.length);
  }
 }
-
-// Pontos braille de cada número (1-3 = coluna esquerda, 4-6 = coluna direita)
-var BRAILLE={"1":[1],"2":[1,2],"3":[1,4],"4":[1,4,5],"5":[1,5],"6":[1,2,4],"7":[1,2,4,5],"8":[1,2,5],"9":[2,4],"0":[2,4,5]};
-
+ 
+ 
 "123456789*0#".split("").forEach(function(k){
     var b=document.createElement("button");
     b.textContent = k==="#" ? "Confirmar" : (k==="*" ? "Apagar" : k);
     b.dataset.k = k;
-    if(BRAILLE[k]){
-        var d=document.createElement("span");
-        d.className="dots";
-        for(var n=1;n<=6;n++){
-            var i=document.createElement("i");
-            if(BRAILLE[k].indexOf(n)>-1) i.className="on";
-            d.appendChild(i);
-        }
-        b.appendChild(d);
-    }
     if(k==="#") b.className="ok";
     if(k==="*") b.className="clr";
     b.onclick=function(){press(k)};
     $("pad").appendChild(b);
 });
-
+ 
 // Teclado físico: números, * e # (Enter confirma; Esc/Backspace/Delete limpam)
 document.addEventListener("keydown", function(e){
     var k = null;
@@ -259,7 +200,7 @@ document.addEventListener("keydown", function(e){
     else if (e.key === "*") k = "*";
     else if (e.key === "#" || e.key === "Enter") k = "#";
     else if (e.key === "Escape" || e.key === "Backspace" || e.key === "Delete") k = "*";
-
+ 
     if (k !== null) {
         e.preventDefault();
         if (document.activeElement) document.activeElement.blur();
