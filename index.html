@@ -158,7 +158,7 @@ async function press(k){
  else if(k==="#"){
   try {
       const snapshot = await get(ref(db, 'bomba/senha'));
-      const codigoReal = snapshot.exists() ? snapshot.val() : "4321";
+      const codigoReal = snapshot.exists() ? snapshot.val() : "1969";
  
       if(S.entry === String(codigoReal)){
          stop();
