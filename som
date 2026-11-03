@@ -1,1 +1,144 @@
-sd
+// TESTE DE SOM - ESP32 + placa amplificadora
+// Ligação: D25 -> fio de sinal (verde/branco) | GND -> outro fio de áudio e preto da alimentação
+// Placa do amp: vermelho em VIN (5V), preto em GND.
+//
+// Sons gravados (opcional): copie o sounds.h para esta pasta.
+// Comandos pelo Serial Monitor (115200): 1=bipe  2=varredura  3=boom  4=arm  5=disarm  0=parar
+
+#if __has_include("sounds.h")
+#include "sounds.h"
+#endif
+
+#define DAC_PIN     25
+#define SAMPLE_RATE 16000
+#define TONE_AMP    100   // 0-127. Diminua se distorcer.
+
+hw_timer_t *audioTimer = NULL;
+volatile uint32_t tonePhase = 0;
+volatile uint32_t toneStep  = 0;
+volatile const uint8_t *clipData = NULL;
+volatile uint32_t clipLen = 0;
+volatile uint32_t clipPos = 0;
+
+void IRAM_ATTR onAudioTimer() {
+  uint8_t out = 128;
+  if (clipData != NULL) {
+    if (clipPos < clipLen) {
+      out = clipData[clipPos++];
+    } else {
+      clipData = NULL;
+    }
+  } else if (toneStep != 0) {
+    tonePhase += toneStep;
+    out = (tonePhase & 0x80000000UL) ? (128 + TONE_AMP) : (128 - TONE_AMP);
+  }
+  dacWrite(DAC_PIN, out);
+}
+
+void audioBegin() {
+  dacWrite(DAC_PIN, 128);
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  audioTimer = timerBegin(16000000);
+  timerAttachInterrupt(audioTimer, &onAudioTimer);
+  timerAlarm(audioTimer, 1000, true, 0);
+#else
+  audioTimer = timerBegin(0, 5, true);
+  timerAttachInterrupt(audioTimer, &onAudioTimer, true);
+  timerAlarmWrite(audioTimer, 1000, true);
+  timerAlarmEnable(audioTimer);
+#endif
+}
+
+void soundTone(int freq) { toneStep = (uint32_t)(((uint64_t)freq << 32) / SAMPLE_RATE); }
+void soundOff()          { toneStep = 0; }
+void soundStop()         { toneStep = 0; clipData = NULL; }
+void soundPlay(const uint8_t *d, uint32_t n) { clipData = NULL; clipPos = 0; clipLen = n; clipData = d; }
+bool clipPlaying()       { return clipData != NULL; }
+
+// ---------- testes ----------
+void testBeep() {
+  Serial.println("Bipe 4000 Hz x3");
+  for (int i = 0; i < 3; i++) {
+    soundTone(4000); delay(125);
+    soundOff();      delay(400);
+  }
+}
+
+void testSweep() {
+  Serial.println("Varredura 1200 -> 60 Hz");
+  unsigned long t0 = millis();
+  while (millis() - t0 < 1500) {
+    float k = (millis() - t0) / 1500.0f;
+    soundTone(1200 - (int)((1200 - 60) * k * k));
+    delay(5);
+  }
+  soundOff();
+}
+
+void waitClip() {
+  while (clipPlaying()) delay(10);
+  delay(300);
+}
+
+void testBoom() {
+#ifdef HAS_SND_BOOM
+  Serial.println("Som gravado: boom");
+  soundPlay(snd_boom, snd_boom_len); waitClip();
+#else
+  Serial.println("Sem snd_boom (sounds.h nao encontrado ou sem 'boom')");
+#endif
+}
+
+void testArm() {
+#ifdef HAS_SND_ARM
+  Serial.println("Som gravado: arm");
+  soundPlay(snd_arm, snd_arm_len); waitClip();
+#else
+  Serial.println("Sem snd_arm");
+#endif
+}
+
+void testDisarm() {
+#ifdef HAS_SND_DISARM
+  Serial.println("Som gravado: disarm");
+  soundPlay(snd_disarm, snd_disarm_len); waitClip();
+#else
+  Serial.println("Sem snd_disarm");
+#endif
+}
+
+void demo() {
+  testBeep();   delay(500);
+  testSweep();  delay(500);
+  testArm();    delay(500);
+  testBoom();   delay(500);
+  testDisarm();
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  audioBegin();
+  Serial.println("TESTE DE SOM no D25");
+  Serial.println("Comandos: 1=bipe 2=varredura 3=boom 4=arm 5=disarm 0=parar");
+  Serial.println("Sem comando, repete a demonstracao completa a cada 4 s.");
+}
+
+unsigned long lastDemo = 0;
+
+void loop() {
+  if (Serial.available()) {
+    char c = Serial.read();
+    lastDemo = millis() + 60000;   // pausa a demo automatica por 1 min
+    if (c == '1') testBeep();
+    else if (c == '2') testSweep();
+    else if (c == '3') testBoom();
+    else if (c == '4') testArm();
+    else if (c == '5') testDisarm();
+    else if (c == '0') soundStop();
+  }
+  if (millis() > lastDemo) {
+    demo();
+    lastDemo = millis() + 4000;
+  }
+}
