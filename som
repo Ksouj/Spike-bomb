@@ -1,144 +1,163 @@
-// TESTE DE SOM - ESP32 + placa amplificadora
-// Ligação: D25 -> fio de sinal (verde/branco) | GND -> outro fio de áudio e preto da alimentação
-// Placa do amp: vermelho em VIN (5V), preto em GND.
-//
-// Sons gravados (opcional): copie o sounds.h para esta pasta.
-// Comandos pelo Serial Monitor (115200): 1=bipe  2=varredura  3=boom  4=arm  5=disarm  0=parar
+#!/usr/bin/env python3
+"""
+Converte som em um sounds.h para o ESP32 (PCM 8 bits, 16 kHz, mono).
 
-#if __has_include("sounds.h")
-#include "sounds.h"
-#endif
+Uso:
+  python wav2h.py nome=arquivo[,inicio[,duracao]] ...
 
-#define DAC_PIN     25
-#define SAMPLE_RATE 16000
-#define TONE_AMP    100   // 0-127. Diminua se distorcer.
+Exemplos:
+  python wav2h.py boom=explosao.wav
+  python wav2h.py boom=explosao.mp3,12,4      (começa em 12 s e pega 4 s)
+  python wav2h.py boom=a.wav,0,5 arm=b.wav,0,2 disarm=c.wav,0,2
 
-hw_timer_t *audioTimer = NULL;
-volatile uint32_t tonePhase = 0;
-volatile uint32_t toneStep  = 0;
-volatile const uint8_t *clipData = NULL;
-volatile uint32_t clipLen = 0;
-volatile uint32_t clipPos = 0;
+Nomes aceitos (ligados ao código): arm, boom, disarm
+Duração padrão: 5 s. Máximo: 8 s por som.
 
-void IRAM_ATTR onAudioTimer() {
-  uint8_t out = 128;
-  if (clipData != NULL) {
-    if (clipPos < clipLen) {
-      out = clipData[clipPos++];
-    } else {
-      clipData = NULL;
-    }
-  } else if (toneStep != 0) {
-    tonePhase += toneStep;
-    out = (tonePhase & 0x80000000UL) ? (128 + TONE_AMP) : (128 - TONE_AMP);
-  }
-  dacWrite(DAC_PIN, out);
-}
+Como lê o arquivo (tenta nesta ordem):
+  1. ffmpeg (se estiver instalado ou se o ffmpeg.exe estiver na mesma pasta) - aceita tudo
+  2. WAV puro, sem instalar nada
+  3. MP3 com a biblioteca miniaudio (instale com: pip install miniaudio)
+"""
+import os, sys, wave, struct, shutil, subprocess, tempfile
 
-void audioBegin() {
-  dacWrite(DAC_PIN, 128);
-#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
-  audioTimer = timerBegin(16000000);
-  timerAttachInterrupt(audioTimer, &onAudioTimer);
-  timerAlarm(audioTimer, 1000, true, 0);
-#else
-  audioTimer = timerBegin(0, 5, true);
-  timerAttachInterrupt(audioTimer, &onAudioTimer, true);
-  timerAlarmWrite(audioTimer, 1000, true);
-  timerAlarmEnable(audioTimer);
-#endif
-}
+RATE = 16000
+DEFAULT_DUR = 5.0
+MAX_DUR = 8.0
 
-void soundTone(int freq) { toneStep = (uint32_t)(((uint64_t)freq << 32) / SAMPLE_RATE); }
-void soundOff()          { toneStep = 0; }
-void soundStop()         { toneStep = 0; clipData = NULL; }
-void soundPlay(const uint8_t *d, uint32_t n) { clipData = NULL; clipPos = 0; clipLen = n; clipData = d; }
-bool clipPlaying()       { return clipData != NULL; }
 
-// ---------- testes ----------
-void testBeep() {
-  Serial.println("Bipe 4000 Hz x3");
-  for (int i = 0; i < 3; i++) {
-    soundTone(4000); delay(125);
-    soundOff();      delay(400);
-  }
-}
+def find_ffmpeg():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(here, "ffmpeg.exe"), os.path.join(os.getcwd(), "ffmpeg.exe")):
+        if os.path.exists(p):
+            return p
+    return shutil.which("ffmpeg")
 
-void testSweep() {
-  Serial.println("Varredura 1200 -> 60 Hz");
-  unsigned long t0 = millis();
-  while (millis() - t0 < 1500) {
-    float k = (millis() - t0) / 1500.0f;
-    soundTone(1200 - (int)((1200 - 60) * k * k));
-    delay(5);
-  }
-  soundOff();
-}
 
-void waitClip() {
-  while (clipPlaying()) delay(10);
-  delay(300);
-}
+def via_ffmpeg(ff, path, start, dur):
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp.close()
+    cmd = [ff, "-y", "-ss", str(start), "-t", str(dur), "-i", path,
+           "-vn", "-ar", str(RATE), "-ac", "1", "-acodec", "pcm_u8",
+           "-af", "loudnorm", tmp.name]
+    r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    if r.returncode != 0:
+        print("Erro do ffmpeg:")
+        print(r.stderr.decode(errors="ignore")[-600:])
+        sys.exit(1)
+    with wave.open(tmp.name, "rb") as w:
+        data = w.readframes(w.getnframes())
+    os.unlink(tmp.name)
+    return data
 
-void testBoom() {
-#ifdef HAS_SND_BOOM
-  Serial.println("Som gravado: boom");
-  soundPlay(snd_boom, snd_boom_len); waitClip();
-#else
-  Serial.println("Sem snd_boom (sounds.h nao encontrado ou sem 'boom')");
-#endif
-}
 
-void testArm() {
-#ifdef HAS_SND_ARM
-  Serial.println("Som gravado: arm");
-  soundPlay(snd_arm, snd_arm_len); waitClip();
-#else
-  Serial.println("Sem snd_arm");
-#endif
-}
+def read_wav(path):
+    with wave.open(path, "rb") as w:
+        ch, sw, rate, n = w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getnframes()
+        raw = w.readframes(n)
+    if sw == 1:
+        vals = [(b - 128) / 128.0 for b in raw]
+    elif sw == 2:
+        vals = [v / 32768.0 for v in struct.unpack("<%dh" % (len(raw) // 2), raw)]
+    else:
+        print("WAV de %d bits não suportado. Salve como WAV de 16 bits." % (sw * 8))
+        sys.exit(1)
+    if ch > 1:
+        vals = [sum(vals[i:i + ch]) / ch for i in range(0, len(vals) - ch + 1, ch)]
+    return vals, rate
 
-void testDisarm() {
-#ifdef HAS_SND_DISARM
-  Serial.println("Som gravado: disarm");
-  soundPlay(snd_disarm, snd_disarm_len); waitClip();
-#else
-  Serial.println("Sem snd_disarm");
-#endif
-}
 
-void demo() {
-  testBeep();   delay(500);
-  testSweep();  delay(500);
-  testArm();    delay(500);
-  testBoom();   delay(500);
-  testDisarm();
-}
+def read_mp3(path):
+    try:
+        import miniaudio
+    except ImportError:
+        print("Para ler MP3 sem ffmpeg, instale a biblioteca:  pip install miniaudio")
+        print("Ou use um arquivo WAV.")
+        sys.exit(1)
+    d = miniaudio.decode_file(path, output_format=miniaudio.SampleFormat.SIGNED16,
+                              nchannels=1, sample_rate=RATE)
+    return [s / 32768.0 for s in d.samples], RATE
 
-void setup() {
-  Serial.begin(115200);
-  delay(300);
-  audioBegin();
-  Serial.println("TESTE DE SOM no D25");
-  Serial.println("Comandos: 1=bipe 2=varredura 3=boom 4=arm 5=disarm 0=parar");
-  Serial.println("Sem comando, repete a demonstracao completa a cada 4 s.");
-}
 
-unsigned long lastDemo = 0;
+def resample(vals, src, dst):
+    if src == dst or not vals:
+        return vals
+    n = int(len(vals) * dst / src)
+    out = []
+    for i in range(n):
+        pos = i * src / dst
+        j = int(pos)
+        f = pos - j
+        a = vals[j]
+        b = vals[j + 1] if j + 1 < len(vals) else a
+        out.append(a + (b - a) * f)
+    return out
 
-void loop() {
-  if (Serial.available()) {
-    char c = Serial.read();
-    lastDemo = millis() + 60000;   // pausa a demo automatica por 1 min
-    if (c == '1') testBeep();
-    else if (c == '2') testSweep();
-    else if (c == '3') testBoom();
-    else if (c == '4') testArm();
-    else if (c == '5') testDisarm();
-    else if (c == '0') soundStop();
-  }
-  if (millis() > lastDemo) {
-    demo();
-    lastDemo = millis() + 4000;
-  }
-}
+
+def pure_python(path, start, dur):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".wav":
+        vals, rate = read_wav(path)
+    elif ext == ".mp3":
+        vals, rate = read_mp3(path)
+    else:
+        print("Sem ffmpeg, só consigo ler .wav e .mp3 (o seu é %s)." % ext)
+        print("Converta para WAV ou coloque o ffmpeg.exe na pasta do script.")
+        sys.exit(1)
+    a = int(start * rate)
+    b = a + int(dur * rate)
+    vals = vals[a:b]
+    if not vals:
+        print("O trecho pedido está fora da duração do arquivo.")
+        sys.exit(1)
+    vals = resample(vals, rate, RATE)
+    peak = max(abs(v) for v in vals) or 1.0
+    gain = 0.9 / peak
+    return bytes(max(0, min(255, int(round(v * gain * 127)) + 128)) for v in vals)
+
+
+def convert(path, start, dur):
+    if not os.path.exists(path):
+        print("Arquivo não encontrado: %s (pasta atual: %s)" % (path, os.getcwd()))
+        sys.exit(1)
+    ff = find_ffmpeg()
+    if ff:
+        return via_ffmpeg(ff, path, start, dur)
+    print("(ffmpeg não encontrado, usando conversão em Python puro)")
+    return pure_python(path, start, dur)
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+    out = ["// Gerado por wav2h.py - PCM 8 bits, 16 kHz, mono", "#pragma once", ""]
+    for arg in sys.argv[1:]:
+        name, rest = arg.split("=", 1)
+        parts = rest.split(",")
+        path = parts[0]
+        start = float(parts[1]) if len(parts) > 1 else 0.0
+        dur = float(parts[2]) if len(parts) > 2 else DEFAULT_DUR
+        if dur == 0:
+            dur = 3600.0   # duração 0 = som completo, até o fim do arquivo
+        elif dur > MAX_DUR:
+            print("Duração limitada a %.0f s (use duração 0 para o som completo)." % MAX_DUR)
+            dur = MAX_DUR
+        data = convert(path, start, dur)
+        if len(data) > 2500000:
+            print("ATENÇÃO: %s tem %.1f MB, grande demais para o ESP32. Corte o trecho." % (name, len(data) / 1e6))
+        elif len(data) > 1200000:
+            print("ATENÇÃO: %s tem %.1f MB. Na Arduino IDE, em Tools > Partition Scheme, escolha 'Huge APP'." % (name, len(data) / 1e6))
+        out.append("#define HAS_SND_%s" % name.upper())
+        out.append("const uint32_t snd_%s_len = %d;" % (name, len(data)))
+        out.append("const uint8_t snd_%s[] = {" % name)
+        for i in range(0, len(data), 24):
+            out.append("  " + ",".join(str(b) for b in data[i:i + 24]) + ",")
+        out.append("};")
+        out.append("")
+        print("%s: %d bytes (%.1f s)" % (name, len(data), len(data) / RATE))
+    with open("sounds.h", "w") as f:
+        f.write("\n".join(out))
+    print("sounds.h gerado em: " + os.path.abspath("sounds.h"))
+
+
+main()
