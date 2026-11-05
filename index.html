@@ -222,7 +222,7 @@ async function press(k){
          somAcerto();
          set(ref(db, 'bomba/status'), 'DESARMADA');
       } else {
-         S.fimEm=Math.min(S.fimEm, Math.max(now()+1000, S.fimEm-5000));
+         S.fimEm=Math.min(S.fimEm, Math.max(now()+1000, S.fimEm-30000));
          S.left=Math.max(0,Math.ceil((S.fimEm-now())/1000));
          S.entry="";
          st.textContent="Código errado! -5 segundos";
